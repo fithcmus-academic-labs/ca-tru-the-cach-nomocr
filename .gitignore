@@ -27,3 +27,6 @@ ENV/
 .DS_Store
 Thumbs.db
 desktop.ini
+
+# Project guidelines (Internal)
+guide/

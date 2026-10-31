@@ -22,7 +22,7 @@ Centuries of Vietnamese literary, historical, and philosophical heritage are enc
 
 This project delivers a **Domain-Agnostic, Production-Grade Automated Parallel Corpus Construction Pipeline**. It ingests raw scanned manuscript PDFs of the classical art form ***Ca Trù Thể Cách*** (preserved at the Institute of Sino-Nom Studies and Yale University Library) and automatically converts them into standardized, benchmark-grade bilingual corpora (Sino-Nom $\leftrightarrow$ Modern Vietnamese Quốc ngữ) alongside training-ready **PPOCRLabel** annotations.
 
-The entire system adheres strictly to the official course specifications (`guide/Quy_định_đồ_án.pdf`), ensuring objective, fair, and technically reproducible assessment.
+The entire system adheres strictly to academic benchmarking requirements and rigorous quality standards, ensuring objective, fair, and technically reproducible assessment.
 
 ---
 
