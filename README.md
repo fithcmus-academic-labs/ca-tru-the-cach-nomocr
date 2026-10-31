@@ -121,9 +121,10 @@ $env:PYTHONPATH="."; python scripts/verify_output.py --book "Ca Trù Thê Cách,
 
 For detailed visual inspection and cell-by-cell execution, launch Jupyter:
 
-* **[Pipeline_AB160.ipynb](file:///D:/User/nghonamjiwoo/Natural%20Language%20Processing/ca-tru-the-cach-nomocr/Pipeline_AB160.ipynb)**: Step-by-step pipeline execution for `AB 160`, displaying intermediate outputs, bounding boxes, and exported tables.
-* **[Evaluation_AB160.ipynb](file:///D:/User/nghonamjiwoo/Natural%20Language%20Processing/ca-tru-the-cach-nomocr/Evaluation_AB160.ipynb)**: Full quantitative verification, complete 45/45 page ledger, ARGB font verification, and a transparent list of all 21 outlier characters.
-* **[EDA_and_Pipeline_Architecture.ipynb](file:///D:/User/nghonamjiwoo/Natural%20Language%20Processing/ca-tru-the-cach-nomocr/EDA_and_Pipeline_Architecture.ipynb)**: Exploratory data analysis across all 4 manuscripts, red-line margin detection ($x \approx 249\text{ px}$), and diagram rendering.
+* **[Pipeline_AB160.ipynb](Pipeline_AB160.ipynb)**: Step-by-step pipeline execution for `AB 160`, displaying intermediate outputs, bounding boxes, and exported tables.
+* **[Evaluation_AB160.ipynb](Evaluation_AB160.ipynb)**: Full quantitative verification, complete 45/45 page ledger, ARGB font verification, and a transparent list of all 21 outlier characters.
+* **[EDA_and_Pipeline_Architecture.ipynb](EDA_and_Pipeline_Architecture.ipynb)**: Exploratory data analysis across all 4 manuscripts, red-line margin detection ($x \approx 249\text{ px}$), and diagram rendering.
+
 
 ---
 
