@@ -28,11 +28,13 @@ ENV/
 Thumbs.db
 desktop.ini
 
-# Node & Web Studio
+# Node & Web Studio (UI/UX)
 node_modules/
 dist/
 dist-ssr/
 *.local
+web-studio/
+server/
 
 # Project guidelines (Internal)
 guide/

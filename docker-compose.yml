@@ -130,20 +130,6 @@ services:
     networks:
       - sinonom-net
 
-  # 6. React / Vite Frontend (Human-in-the-Loop Web Studio)
-  frontend:
-    build:
-      context: .
-      dockerfile: web-studio/Dockerfile
-    container_name: sinonom-frontend
-    restart: unless-stopped
-    ports:
-      - "3000:80"
-    depends_on:
-      - backend
-    networks:
-      - sinonom-net
-
 volumes:
   pgdata:
     driver: local
