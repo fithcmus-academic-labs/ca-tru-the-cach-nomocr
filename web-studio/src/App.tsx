@@ -1,15 +1,14 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Header } from './components/layout/Header';
-import { StatusBar } from './components/layout/StatusBar';
-import { HotkeyModal } from './components/layout/HotkeyModal';
-import { PipelineBanner } from './components/dashboard/PipelineBanner';
-import { DocumentSidebar } from './components/editor/DocumentSidebar';
-import { CanvasToolbar } from './components/editor/CanvasToolbar';
+import { SimpleHeader } from './components/layout/SimpleHeader';
+import { SimplePageDrawer } from './components/editor/SimplePageDrawer';
+import { SimpleCanvasToolbar } from './components/editor/SimpleCanvasToolbar';
 import { CanvasViewer } from './components/editor/CanvasViewer';
-import { AlignmentGrid } from './components/editor/AlignmentGrid';
-import { EditRecordModal } from './components/editor/EditRecordModal';
+import { SimpleAlignmentGrid } from './components/editor/SimpleAlignmentGrid';
+import { PipelineModal } from './components/dashboard/PipelineModal';
+import { SimpleExportModal } from './components/export/SimpleExportModal';
 import { UploadModal } from './components/dashboard/UploadModal';
-import { ExportModal } from './components/export/ExportModal';
+import { HotkeyModal } from './components/layout/HotkeyModal';
+import { EditRecordModal } from './components/editor/EditRecordModal';
 
 import { useAnnotationStore } from './store/useAnnotationStore';
 import { useAlignmentStore } from './store/useAlignmentStore';
@@ -17,14 +16,16 @@ import { useDocumentStore } from './store/useDocumentStore';
 import { useProjectStore } from './store/useProjectStore';
 
 export const App: React.FC = () => {
-  // Modal states
+  // Modal & Drawer states
+  const [isPageDrawerOpen, setIsPageDrawerOpen] = useState(false);
+  const [isPipelineOpen, setIsPipelineOpen] = useState(false);
   const [isUploadOpen, setIsUploadOpen] = useState(false);
   const [isExportOpen, setIsExportOpen] = useState(false);
   const [isHotkeysOpen, setIsHotkeysOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
   // Canvas viewport state
-  const [zoom, setZoom] = useState(0.48); // Initial comfortable fit for 1400x1800 scan image
+  const [zoom, setZoom] = useState(0.48);
   const [panX, setPanX] = useState(40);
   const [panY, setPanY] = useState(20);
   const [isPanMode, setIsPanMode] = useState(false);
@@ -47,7 +48,6 @@ export const App: React.FC = () => {
 
   // Global Keyboard Shortcuts
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
-    // If typing in an input or textarea, ignore single-key hotkeys
     const targetTag = (e.target as HTMLElement)?.tagName?.toLowerCase();
     if (targetTag === 'input' || targetTag === 'textarea') {
       if (e.key === 'Escape') {
@@ -70,9 +70,6 @@ export const App: React.FC = () => {
       if (selectedSentenceId) {
         updateRecordReviewStatus(selectedSentenceId, 'approved');
       }
-    } else if (e.key === 'Enter') {
-      e.preventDefault();
-      setIsEditModalOpen(true);
     } else if (e.ctrlKey && e.key === 's') {
       e.preventDefault();
       saveChanges();
@@ -103,24 +100,21 @@ export const App: React.FC = () => {
 
   return (
     <div className="h-screen w-screen flex flex-col bg-slate-100 overflow-hidden font-sans">
-      {/* 1. Header with Metadata, Metrics & Actions */}
-      <Header
+      {/* 1. Sleek, Modern Top Header */}
+      <SimpleHeader
         onOpenUpload={() => setIsUploadOpen(true)}
         onOpenExport={() => setIsExportOpen(true)}
+        onOpenPipeline={() => setIsPipelineOpen(true)}
         onOpenHotkeys={() => setIsHotkeysOpen(true)}
+        isPageDrawerOpen={isPageDrawerOpen}
+        onTogglePageDrawer={() => setIsPageDrawerOpen(prev => !prev)}
       />
 
-      {/* 2. Pipeline 6-Stage Progress Monitoring Banner */}
-      <PipelineBanner />
-
-      {/* 3. Main Tri-Pane Workspace */}
+      {/* 2. Main 50/50 Split Workspace (Original Scan vs Parallel Alignment Grid) */}
       <div className="flex-1 flex overflow-hidden">
-        {/* Pane 1: Document Sidebar */}
-        <DocumentSidebar />
-
-        {/* Pane 2: Scan Viewer & Annotation Canvas */}
-        <div className="flex-1 flex flex-col border-r border-slate-200 overflow-hidden relative">
-          <CanvasToolbar
+        {/* Left Half: Original Scan & Bounding Box Canvas */}
+        <div className="flex-1 flex flex-col relative overflow-hidden bg-slate-900/5">
+          <SimpleCanvasToolbar
             zoomLevel={zoom}
             onZoomIn={() => setZoom(z => Math.min(z * 1.15, 4.0))}
             onZoomOut={() => setZoom(z => Math.max(z * 0.85, 0.2))}
@@ -148,20 +142,42 @@ export const App: React.FC = () => {
           />
         </div>
 
-        {/* Pane 3: Alignment Data Grid */}
-        <div className="w-[580px] shrink-0 flex flex-col overflow-hidden bg-white">
-          <AlignmentGrid onOpenEditModal={() => setIsEditModalOpen(true)} />
+        {/* Right Half: Bilingual Alignment Grid with Direct Inline Editing */}
+        <div className="w-[620px] shrink-0 flex flex-col overflow-hidden bg-white shadow-xs">
+          <SimpleAlignmentGrid onOpenEditModal={() => setIsEditModalOpen(true)} />
         </div>
       </div>
 
-      {/* 4. Bottom Status Bar */}
-      <StatusBar zoomLevel={zoom} />
+      {/* 3. Slide-over & Modals */}
+      <SimplePageDrawer
+        isOpen={isPageDrawerOpen}
+        onClose={() => setIsPageDrawerOpen(false)}
+      />
 
-      {/* Modals */}
-      <UploadModal isOpen={isUploadOpen} onClose={() => setIsUploadOpen(false)} />
-      <ExportModal isOpen={isExportOpen} onClose={() => setIsExportOpen(false)} />
-      <HotkeyModal isOpen={isHotkeysOpen} onClose={() => setIsHotkeysOpen(false)} />
-      <EditRecordModal isOpen={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} />
+      <PipelineModal
+        isOpen={isPipelineOpen}
+        onClose={() => setIsPipelineOpen(false)}
+      />
+
+      <SimpleExportModal
+        isOpen={isExportOpen}
+        onClose={() => setIsExportOpen(false)}
+      />
+
+      <UploadModal
+        isOpen={isUploadOpen}
+        onClose={() => setIsUploadOpen(false)}
+      />
+
+      <HotkeyModal
+        isOpen={isHotkeysOpen}
+        onClose={() => setIsHotkeysOpen(false)}
+      />
+
+      <EditRecordModal
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+      />
     </div>
   );
 };
