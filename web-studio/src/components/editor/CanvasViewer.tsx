@@ -86,6 +86,7 @@ export const CanvasViewer: React.FC<CanvasViewerProps> = ({
 
   // Filter boxes by region
   const visibleBoxes = boxes.filter(b => {
+    if (visibleRegion === 'none') return false;
     if (visibleRegion === 'all') return true;
     return b.region_type === visibleRegion;
   });

@@ -8,7 +8,7 @@ interface AnnotationState {
   selectedBoxId: string | null;
   hoveredBoxId: string | null;
   activeAnchorIndex: number; // 0..3 or -1
-  visibleRegion: 'all' | 'ch' | 'vi';
+  visibleRegion: 'all' | 'ch' | 'vi' | 'none';
   isDrawingMode: boolean;
   drawingPoints: Point2D[];
 
@@ -16,7 +16,7 @@ interface AnnotationState {
   setSelectedBoxId: (id: string | null) => void;
   setHoveredBoxId: (id: string | null) => void;
   setActiveAnchorIndex: (index: number) => void;
-  setVisibleRegion: (region: 'all' | 'ch' | 'vi') => void;
+  setVisibleRegion: (region: 'all' | 'ch' | 'vi' | 'none') => void;
   setIsDrawingMode: (active: boolean) => void;
   
   loadBoxesForPage: (projectId: string, pageNumber: number) => Promise<void>;

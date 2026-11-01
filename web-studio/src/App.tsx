@@ -1,14 +1,12 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { SimpleHeader } from './components/layout/SimpleHeader';
+import { NotebookLMHeader } from './components/notebooklm/NotebookLMHeader';
+import { NotebookLMSourceViewer } from './components/notebooklm/NotebookLMSourceViewer';
+import { NotebookLMEvalCard } from './components/notebooklm/NotebookLMEvalCard';
+import { NotebookLMCenterStudio } from './components/notebooklm/NotebookLMCenterStudio';
 import { SimplePageDrawer } from './components/editor/SimplePageDrawer';
-import { SimpleCanvasToolbar } from './components/editor/SimpleCanvasToolbar';
-import { CanvasViewer } from './components/editor/CanvasViewer';
-import { SimpleAlignmentGrid } from './components/editor/SimpleAlignmentGrid';
-import { PipelineModal } from './components/dashboard/PipelineModal';
 import { SimpleExportModal } from './components/export/SimpleExportModal';
 import { UploadModal } from './components/dashboard/UploadModal';
 import { HotkeyModal } from './components/layout/HotkeyModal';
-import { EditRecordModal } from './components/editor/EditRecordModal';
 
 import { useAnnotationStore } from './store/useAnnotationStore';
 import { useAlignmentStore } from './store/useAlignmentStore';
@@ -18,11 +16,9 @@ import { useProjectStore } from './store/useProjectStore';
 export const App: React.FC = () => {
   // Modal & Drawer states
   const [isPageDrawerOpen, setIsPageDrawerOpen] = useState(false);
-  const [isPipelineOpen, setIsPipelineOpen] = useState(false);
   const [isUploadOpen, setIsUploadOpen] = useState(false);
   const [isExportOpen, setIsExportOpen] = useState(false);
   const [isHotkeysOpen, setIsHotkeysOpen] = useState(false);
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
   // Canvas viewport state
   const [zoom, setZoom] = useState(0.48);
@@ -38,7 +34,8 @@ export const App: React.FC = () => {
     selectPreviousMismatch, 
     saveChanges, 
     updateRecordReviewStatus,
-    selectedSentenceId 
+    selectedSentenceId,
+    setFilterStatus
   } = useAlignmentStore();
 
   // Load annotations on mount and page switch
@@ -99,23 +96,24 @@ export const App: React.FC = () => {
   };
 
   return (
-    <div className="h-screen w-screen flex flex-col bg-slate-100 overflow-hidden font-sans">
-      {/* 1. Sleek, Modern Top Header */}
-      <SimpleHeader
+    <div className="h-screen w-screen flex flex-col bg-[#f0f4f9] overflow-hidden font-sans">
+      {/* 1. NotebookLM Minimalist Header */}
+      <NotebookLMHeader
         onOpenUpload={() => setIsUploadOpen(true)}
         onOpenExport={() => setIsExportOpen(true)}
-        onOpenPipeline={() => setIsPipelineOpen(true)}
+        onOpenPageDrawer={() => setIsPageDrawerOpen(true)}
         onOpenHotkeys={() => setIsHotkeysOpen(true)}
-        isPageDrawerOpen={isPageDrawerOpen}
-        onTogglePageDrawer={() => setIsPageDrawerOpen(prev => !prev)}
       />
 
-      {/* 2. Main 50/50 Split Workspace (Original Scan vs Parallel Alignment Grid) */}
-      <div className="flex-1 flex overflow-hidden">
-        {/* Left Half: Original Scan & Bounding Box Canvas */}
-        <div className="flex-1 flex flex-col relative overflow-hidden bg-slate-900/5">
-          <SimpleCanvasToolbar
-            zoomLevel={zoom}
+      {/* 2. Main NotebookLM Studio Workspace */}
+      <div className="flex-1 flex gap-4 p-4 overflow-hidden">
+        {/* Left Card: Source Manuscript Page */}
+        <div className="w-[45%] flex flex-col overflow-hidden">
+          <NotebookLMSourceViewer
+            zoom={zoom}
+            panX={panX}
+            panY={panY}
+            isPanMode={isPanMode}
             onZoomIn={() => setZoom(z => Math.min(z * 1.15, 4.0))}
             onZoomOut={() => setZoom(z => Math.max(z * 0.85, 0.2))}
             onFitScreen={() => {
@@ -123,40 +121,28 @@ export const App: React.FC = () => {
               setPanX(40);
               setPanY(20);
             }}
-            onResetZoom={() => {
-              setZoom(1.0);
-              setPanX(0);
-              setPanY(0);
-            }}
-            isPanMode={isPanMode}
             onTogglePanMode={() => setIsPanMode(!isPanMode)}
-          />
-
-          <CanvasViewer
-            zoom={zoom}
-            panX={panX}
-            panY={panY}
-            isPanMode={isPanMode}
             onUpdateTransform={handleUpdateTransform}
-            onOpenEditModal={() => setIsEditModalOpen(true)}
           />
         </div>
 
-        {/* Right Half: Bilingual Alignment Grid with Direct Inline Editing */}
-        <div className="w-[620px] shrink-0 flex flex-col overflow-hidden bg-white shadow-xs">
-          <SimpleAlignmentGrid onOpenEditModal={() => setIsEditModalOpen(true)} />
+        {/* Right Card: Studio with Eval Overview Card on Top & Parallel Notes below */}
+        <div className="flex-1 flex flex-col gap-4 overflow-hidden">
+          {/* Top: Evaluation Result Card (NotebookLM Guide Style) */}
+          <NotebookLMEvalCard
+            onOpenExport={() => setIsExportOpen(true)}
+            onFilterRedOnly={() => setFilterStatus('mismatch_only')}
+          />
+
+          {/* Bottom: Parallel Corpus Studio Table with Direct Inline Editing */}
+          <NotebookLMCenterStudio />
         </div>
       </div>
 
-      {/* 3. Slide-over & Modals */}
+      {/* 3. Slide-over Drawer & Modals */}
       <SimplePageDrawer
         isOpen={isPageDrawerOpen}
         onClose={() => setIsPageDrawerOpen(false)}
-      />
-
-      <PipelineModal
-        isOpen={isPipelineOpen}
-        onClose={() => setIsPipelineOpen(false)}
       />
 
       <SimpleExportModal
@@ -172,11 +158,6 @@ export const App: React.FC = () => {
       <HotkeyModal
         isOpen={isHotkeysOpen}
         onClose={() => setIsHotkeysOpen(false)}
-      />
-
-      <EditRecordModal
-        isOpen={isEditModalOpen}
-        onClose={() => setIsEditModalOpen(false)}
       />
     </div>
   );
