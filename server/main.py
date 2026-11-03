@@ -24,6 +24,7 @@ from core.evaluator import AlignmentEvaluator
 from core.dictionary import HanNomDictionary
 from core.exporter import CorpusExporter
 from core.api_client import KimHanNomClient
+from core.classifier import BookClassifier
 from scripts.run_pipeline import run_book_pipeline
 
 app = FastAPI(
@@ -170,6 +171,41 @@ def switch_book_endpoint(payload: SwitchBookRequest):
         "total_pages": state.total_pages,
         "records_count": len(state.records)
     }
+
+@app.post("/api/pipeline/classify-book")
+@app.post("/api/books/classify")
+async def classify_book_endpoint(
+    file: Optional[UploadFile] = File(None),
+    book_key: Optional[str] = Form(None),
+    pdf_path: Optional[str] = Form(None)
+):
+    """Classify uploaded manuscript PDF into official taxonomy categories (Quy_định_đồ_án.pdf)."""
+    target_path = None
+    try:
+        if file and file.filename:
+            temp_dir = Path("output/temp_uploads")
+            temp_dir.mkdir(parents=True, exist_ok=True)
+            save_path = temp_dir / file.filename
+            with open(save_path, "wb") as f_out:
+                content = await file.read()
+                f_out.write(content)
+            target_path = str(save_path)
+        elif book_key and book_key in BOOKS:
+            target_path = str(DATASETS_MIDTERM_DIR / "pdf" / BOOKS[book_key]["pdf_filename"])
+        elif pdf_path and Path(pdf_path).exists():
+            target_path = pdf_path
+        else:
+            target_path = str(DATASETS_MIDTERM_DIR / "pdf" / BOOKS[state.book_key]["pdf_filename"])
+
+        classifier = BookClassifier()
+        report = classifier.classify(target_path)
+        return {
+            "status": "success",
+            "pdf_name": Path(target_path).name,
+            **report
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Book classification error: {str(e)}")
 
 @app.post("/api/pipeline/run")
 @app.post("/api/projects/{project_id}/pipeline/run")

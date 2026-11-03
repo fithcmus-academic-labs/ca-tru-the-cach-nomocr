@@ -8,6 +8,9 @@ import json
 import pandas as pd
 import openpyxl
 from pathlib import Path
+
+# Ensure repository root is on sys.path
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from core.config import BOOKS, OUTPUT_DIR, COLOR_RED, COLOR_BLACK
 
 if hasattr(sys.stdout, 'reconfigure'):

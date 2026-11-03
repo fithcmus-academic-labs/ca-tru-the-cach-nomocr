@@ -42,3 +42,28 @@ export interface ProjectMetrics {
   similarityScore: number; // Percentage: (1 - mismatchedChars / totalSinoNomChars) * 100
   isSimilarityPassed: boolean; // >= 95.0%
 }
+
+export interface BookClassificationResult {
+  book_type: string; // T1, T1w, T2, T2w, T2b, Tnom, Tnomw, Tqn, Tref, Tx
+  type_name: string;
+  description: string;
+  confidence: number;
+  layout_details: {
+    total_pages?: number;
+    avg_aspect_ratio?: number;
+    is_dual_page_scan?: boolean;
+    has_red_margin_line?: boolean;
+    has_grid_notebook?: boolean;
+    is_handwritten?: boolean;
+    detected_signals?: string[];
+  };
+  recommended_pipeline: {
+    pipeline_id: string;
+    name: string;
+    strategy: string;
+    ocr_engines?: Record<string, string>;
+    alignment_mode?: string;
+    deliverable_folders?: string[];
+    steps: string[];
+  };
+}

@@ -39,6 +39,7 @@ The pipeline follows a modular, data-driven design comprising 6 decoupled engine
 
 | Module | Component | Description & Key Engineering Features |
 |:---|:---|:---|
+| **M0** | **Manuscript Classifier & Router** | - Automated layout classification based on official taxonomy (`T1`, `T1w`, `T2`, `T2w`, `T2b`, `Tnom`, `Tnomw`, `Tqn`, `Tref`, `Tx`) from `guide/Quy_định_đồ_án.pdf`.<br>- Analyzes aspect ratios, digital streams, red margin dividers ($x \approx 249 - 270\text{ px}$), and stroke curvature.<br>- Automatically routes uploaded documents to specialized pipeline execution blueprints (`core/classifier.py`). |
 | **M1** | **Document Preprocessor** | - Renders raw multi-page PDFs at high-fidelity **300 DPI** using PyMuPDF.<br>- Classifies pages into `content/`, `misc/` (covers, catalogue cards), and `blank/`.<br>- Analyzes **Layout T2b** (*bilingual handwriting on student grid notebooks*).<br>- Detects the red vertical margin boundary ($x \approx 249 - 260\text{ px}$) to eliminate margin scribbles. |
 | **M2** | **Dual OCR Engine** | - Sino-Nom recognition via FIT HCMUS **KimHanNom Cloud OCR & Transliteration API** (`core/api_client.py`).<br>- Vietnamese cursive handwriting recognition via multimodal models (Vintern-1B / Qwen2.5-VL). |
 | **M3** | **Text Cleaner & PPOCRLabel Engine** | - Strips modern punctuation and normalizes archaic markers (`、`, `。`).<br>- Normalizes text to Unicode NFC and removes invalid spaces in Sino-Nom.<br>- Formats every Bounding Box as a strict **4-point coordinate polygon** `[[x1,y1], [x2,y2], [x3,y3], [x4,y4]]`.<br>- Automatically generates `Label.txt` and `fileState.txt` compliant with PPOCRLabel. |
@@ -155,7 +156,24 @@ python scripts/run_pipeline.py --book all
 python scripts/run_pipeline.py --book AB_431
 ```
 
-### 2. Strict Deliverables Verification Suite
+### 2. Manuscript Classification & Pipeline Routing CLI
+
+Before processing an unfamiliar PDF document, classify its layout and inspect its recommended execution pipeline via `scripts/classify_book.py`:
+
+```bash
+# Classify student notebook layout (T2b)
+python scripts/classify_book.py --pdf "datasets-midterm/pdf/Ca Trù Thê Cách, AB 160, Nôm_Y.pdf"
+
+# Classify woodblock monolingual Sino-Nom (Tnom)
+python scripts/classify_book.py --pdf "datasets-midterm/pdf/Tho Ho Xuan Huong [chu nom].pdf"
+
+# Classify alternating dual-page spread (T2)
+python scripts/classify_book.py --pdf "datasets-midterm/pdf/Tế cô hồn văn SV4.0 Tuệ Phương.pdf"
+```
+
+The classifier outputs the book taxonomy code (`T1`, `T1w`, `T2`, `T2w`, `T2b`, `Tnom`, `Tnomw`, `Tqn`, `Tref`, `Tx`), layout signals, confidence score, and step-by-step pipeline blueprint.
+
+### 3. Strict Deliverables Verification Suite
 
 Run the automated verification script to audit output structure, PPOCRLabel 4-point coordinates, and phonetic similarity thresholds:
 
@@ -163,7 +181,7 @@ Run the automated verification script to audit output structure, PPOCRLabel 4-po
 python scripts/verify_output.py --book "Ca Trù Thê Cách, AB 160, Nôm_Y"
 ```
 
-### 3. KimHanNom Cloud OCR & Transliteration API Client
+### 4. KimHanNom Cloud OCR & Transliteration API Client
 
 To programmatically call the Cloud OCR & Transliteration service directly from Python:
 
@@ -222,7 +240,7 @@ npm run dev
 Open `http://localhost:5173` in your browser.
 
 ### Web Studio Interactive Features:
-1. **Document Upload & Book Selector**: Upload PDF documents or switch instantly between the 4 historical manuscripts (`AB_160`, `AB_431`, `AB_456`, `NOM_Y`).
+1. **Document Upload & Automated Classification**: Upload any manuscript PDF to instantly trigger `BookClassifier`, detecting layout families (`T2b`, `Tnom`, `T2`, etc.) and generating step-by-step pipeline blueprints. Switch between historical manuscripts (`AB_160`, `AB_431`, `AB_456`, `NOM_Y`).
 2. **Terminal Console Telemetry**: View live progress logs across all 6 pipeline stages.
 3. **Interactive Scan & BBox Viewer**: Inspect high-resolution 300 DPI manuscript pages with 4-point bounding polygons and the $x \approx 260\text{ px}$ red margin boundary.
 4. **KimHanNom Cloud OCR Trigger**: Click `[ Chạy KimHanNom Cloud OCR & Dịch âm ]` to invoke the cloud recognition and transliteration service directly on the active page.
@@ -244,7 +262,8 @@ For research auditing, visual exploration, and step-by-step pipeline execution, 
    - Character frequency distribution, vocabulary overlap analysis, and red vertical margin detection ($x \approx 249\text{ px}$).
 
 3. **[pipeline_architecture.ipynb](pipeline_architecture.ipynb)**:
-   - Comprehensive walk-through of the 6-stage pipeline design.
+   - Comprehensive walk-through of the end-to-end pipeline design.
+   - Automated manuscript layout classification and pipeline routing demonstration across multiple layout families.
    - Demonstrates live KimHanNom Cloud OCR and transliteration API execution on historical manuscript pages with bounding box visualization.
 
 4. **[pipeline_book_processing_demo.ipynb](pipeline_book_processing_demo.ipynb)**:

@@ -6,6 +6,7 @@ from pathlib import Path
 from app.schemas.pipeline import PipelineStageStatus
 from app.services.pipeline_service import pipeline_service
 from core.config import BOOKS
+from core.classifier import BookClassifier
 
 router = APIRouter()
 
@@ -65,3 +66,33 @@ async def ocr_transliterate_endpoint(
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Cloud OCR error: {str(e)}")
+
+@router.post("/pipeline/classify-book")
+@router.post("/books/classify")
+async def classify_book_endpoint(
+    file: Optional[UploadFile] = File(None),
+    pdf_path: Optional[str] = Form(None)
+):
+    target_path = pdf_path
+    if file and file.filename:
+        temp_dir = Path("output/temp_uploads")
+        temp_dir.mkdir(parents=True, exist_ok=True)
+        save_path = temp_dir / file.filename
+        with open(save_path, "wb") as f_out:
+            content = await file.read()
+            f_out.write(content)
+        target_path = str(save_path)
+
+    if not target_path or not Path(target_path).exists():
+        raise HTTPException(status_code=400, detail="Valid PDF file or pdf_path required")
+
+    try:
+        classifier = BookClassifier()
+        report = classifier.classify(target_path)
+        return {
+            "status": "success",
+            "pdf_name": Path(target_path).name,
+            **report
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Classification error: {str(e)}")

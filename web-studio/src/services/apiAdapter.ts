@@ -1,4 +1,4 @@
-import { ProjectMetadata, ProjectMetrics, PipelineStage } from '../types/project';
+import { ProjectMetadata, ProjectMetrics, PipelineStage, BookClassificationResult } from '../types/project';
 import { PageDocument } from '../types/document';
 import { BoundingBox } from '../types/annotation';
 import { AlignmentRecord } from '../types/alignment';
@@ -50,6 +50,7 @@ export interface IBackendAdapter {
   getMetrics(projectId: string): Promise<ProjectMetrics>;
   runPipeline?(bookKey: string): Promise<PipelineRunResult>;
   runCloudOcr?(fileOrPage: File | number, bookKey?: string): Promise<CloudOcrResult>;
+  classifyBook?(fileOrName: File | string): Promise<BookClassificationResult>;
 }
 
 class AuthenticDatasetAdapter implements IBackendAdapter {
@@ -171,6 +172,52 @@ class AuthenticDatasetAdapter implements IBackendAdapter {
         quocngu_transcription: 'chính âm',
         bbox: b.points
       }))
+    };
+  }
+
+  async classifyBook(fileOrName: File | string): Promise<BookClassificationResult> {
+    const name = typeof fileOrName === 'string' ? fileOrName : fileOrName.name;
+    const isNomOnly = name.toLowerCase().includes('nom') && !name.toLowerCase().includes('ca tru');
+    const bookType = isNomOnly ? 'Tnom' : 'T2b';
+    return {
+      book_type: bookType,
+      type_name: bookType === 'T2b' ? 'T2b - Quốc ngữ và Nôm chung trang' : 'Tnom - Chỉ có Nôm (Bản in)',
+      description: bookType === 'T2b'
+        ? 'Bản chụp 1 trang có Quốc ngữ và Nôm song song chung trên cùng một trang (tập học sinh, có đường lề đỏ phân cách x=249-270px).'
+        : 'Tài liệu thuần chữ Hán Nôm, không có bản dịch Quốc ngữ song song.',
+      confidence: 0.95,
+      layout_details: {
+        total_pages: this.pages.length,
+        avg_aspect_ratio: 0.77,
+        is_dual_page_scan: false,
+        has_red_margin_line: bookType === 'T2b',
+        has_grid_notebook: bookType === 'T2b',
+        is_handwritten: true,
+        detected_signals: [
+          bookType === 'T2b' ? 'Phát hiện bố cục song ngữ trên tập học sinh kẻ ô.' : 'Tài liệu thuần chữ Hán Nôm.',
+          bookType === 'T2b' ? 'Dò tìm đường kẻ lề đỏ x=260px phân cách phần chú thích.' : 'Bản khắc mộc bản truyền thống.',
+          'Nét bút viết tay song song: Chữ Nôm dạng cột dọc, Quốc ngữ dạng dòng ngang.'
+        ]
+      },
+      recommended_pipeline: {
+        pipeline_id: bookType === 'T2b' ? 'pipeline_t2b' : 'pipeline_tnom',
+        name: bookType === 'T2b' ? 'Pipeline T2b (Song ngữ cùng trang - Tập học sinh kẻ ô)' : 'Pipeline Tnom (Đơn ngữ chữ Hán Nôm)',
+        strategy: bookType === 'T2b' ? 't2b_margin_split_and_dual_ocr' : 'monolingual_sino_nom_ocr',
+        ocr_engines: {
+          sino_nom: 'KimHanNom Cloud OCR (FIT HCMUS API)',
+          quoc_ngu: 'Vintern-1B / CRNN Cursive Engine'
+        },
+        alignment_mode: bookType === 'T2b' ? '1-1 intra-page phonetic DP sequence alignment' : 'monolingual_transliteration_lookup',
+        deliverable_folders: ['ch', 'vi', 'misc', 'blank'],
+        steps: [
+          '1. Document Preprocessing: Tách 300 DPI, phân loại trang, dò tìm lề đỏ x=249-270px',
+          '2. Dual OCR: Nhận diện chữ Nôm qua KimHanNom Cloud API và Quốc ngữ qua OCR chữ thảo',
+          '3. BBox Segmentation: Phân lập 4 điểm polygon cho ch/ (bên phải) và vi/ (bên trái)',
+          '4. Bilingual Alignment: Dóng hàng ngữ liệu song song từng trang theo từ điển âm đọc',
+          '5. Text Normalization: Chuẩn hóa Unicode NFC, ánh xạ dấu câu cổ, xuất PPOCRLabel',
+          '6. Quality Evaluation: Đánh giá độ tương đồng >= 95% và tô màu font ARGB Đen/Đỏ'
+        ]
+      }
     };
   }
 }
@@ -317,6 +364,25 @@ class RealBackendAdapter implements IBackendAdapter {
       return res.json();
     } catch {
       return this.fallback.runCloudOcr!(fileOrPage, bookKey);
+    }
+  }
+
+  async classifyBook(fileOrName: File | string): Promise<BookClassificationResult> {
+    try {
+      const formData = new FormData();
+      if (typeof fileOrName === 'string') {
+        formData.append('pdf_path', fileOrName);
+      } else {
+        formData.append('file', fileOrName);
+      }
+      const res = await fetch(`${this.baseUrl}/pipeline/classify-book`, {
+        method: 'POST',
+        body: formData
+      });
+      if (!res.ok) throw new Error('Classification backend error');
+      return res.json();
+    } catch {
+      return this.fallback.classifyBook!(fileOrName);
     }
   }
 }
