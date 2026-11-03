@@ -3,9 +3,13 @@ System Configuration for Hán Nôm - Quốc ngữ Parallel Corpus Pipeline
 """
 import os
 from pathlib import Path
+from dotenv import load_dotenv
 
 # Paths
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Load environment variables from .env
+load_dotenv(BASE_DIR / ".env")
 DATA_DIR = BASE_DIR / "data"
 RAW_DIR = DATA_DIR / "raw"
 DICTS_DIR = DATA_DIR / "dicts"
@@ -25,6 +29,15 @@ LAPLACIAN_BLUR_THRESHOLD = 50.0
 # Excel Colors (ARGB)
 COLOR_BLACK = "FF000000"
 COLOR_RED = "FFFF0000"
+
+# KimHanNom FIT HCMUS Cloud API Configuration
+KIMHANNOM_BASE_URL = os.getenv("KIMHANNOM_BASE_URL", "https://kimhannom.fit.hcmus.edu.vn")
+KIMHANNOM_EMAIL = os.getenv("KIMHANNOM_EMAIL", "")
+KIMHANNOM_PASSWORD = os.getenv("KIMHANNOM_PASSWORD", "")
+KIMHANNOM_UPLOAD_ENDPOINT = "/api/web/clc-sinonom/image-upload"
+KIMHANNOM_OCR_ENDPOINT = "/api/web/clc-sinonom/image-ocr"
+KIMHANNOM_TRANSLIT_ENDPOINT = "/api/web/clc-sinonom/sinonom-transliteration"
+
 
 # Target Books in Midterm Datasets
 BOOKS = {
