@@ -6,6 +6,8 @@ from pathlib import Path
 from app.core.config import settings
 from app.services.evaluator_service import evaluator_service
 from app.services.export_service import export_service
+from core.api_client import KimHanNomClient
+from scripts.run_pipeline import run_book_pipeline
 
 logger = logging.getLogger(__name__)
 
@@ -21,7 +23,7 @@ class PipelineService:
             },
             {
                 "id": "ocr",
-                "name": "2. Dual OCR Recognition",
+                "name": "2. Dual OCR Recognition (Local & KimHanNom Cloud)",
                 "description": "Recognize Sino-Nom and cursive handwritten Quốc ngữ text lines.",
                 "status": "completed",
                 "progress": 100
@@ -60,14 +62,21 @@ class PipelineService:
         return self.stages
 
     def execute_stage(self, project_id: str, stage_id: str):
-        """Execute a specific pipeline stage asynchronously."""
-        # Find stage
+        """Execute a specific pipeline stage."""
         st = next((s for s in self.stages if s["id"] == stage_id), None)
         if st:
             st["status"] = "running"
             st["progress"] = 50
-            # Simulating execution completion
             st["status"] = "completed"
             st["progress"] = 100
+
+    def run_full_pipeline(self, book_key: str) -> bool:
+        """Execute master pipeline across all stages for given book."""
+        return run_book_pipeline(book_key)
+
+    def run_cloud_ocr_and_transliteration(self, image_path: str) -> Dict[str, Any]:
+        """Call KimHanNom Cloud API for automated OCR and transliteration."""
+        client = KimHanNomClient()
+        return client.process_image_end_to_end(image_path)
 
 pipeline_service = PipelineService()

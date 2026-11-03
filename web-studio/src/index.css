@@ -1,0 +1,45 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --bg-workspace: #ffffff;
+    --border-subtle: #d1d5db;
+    --text-primary: #111827;
+    --text-secondary: #4b5563;
+  }
+
+  body {
+    background-color: #f9fafb;
+    color: #111827;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    overflow-y: auto;
+    margin: 0;
+    padding: 0;
+  }
+}
+
+/* Sino-Nom Font Family Fallback */
+.font-nom {
+  font-family: "NomNaTongLight", "Hannom", "Noto Serif CJK TC", "MingLiU", "SimSun", "Segoe UI Historic", serif;
+}
+
+/* Monospace fonts */
+.font-mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+}
+
+/* Custom Scrollbar for tables and viewers */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #f3f4f6;
+}
+::-webkit-scrollbar-thumb {
+  background: #9ca3af;
+  border-radius: 2px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #6b7280;
+}

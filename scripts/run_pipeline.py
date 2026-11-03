@@ -14,7 +14,8 @@ from core.cleaner import PPOCRLabelFormatter, TextCleaner
 from core.evaluator import AlignmentEvaluator
 from core.exporter import CorpusExporter
 
-sys.stdout.reconfigure(encoding='utf-8')
+if hasattr(sys.stdout, 'reconfigure'):
+    sys.stdout.reconfigure(encoding='utf-8')
 
 def run_book_pipeline(book_key: str):
     book = BOOKS.get(book_key)

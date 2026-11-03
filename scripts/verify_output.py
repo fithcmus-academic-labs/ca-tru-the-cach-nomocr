@@ -10,7 +10,8 @@ import openpyxl
 from pathlib import Path
 from core.config import BOOKS, OUTPUT_DIR, COLOR_RED, COLOR_BLACK
 
-sys.stdout.reconfigure(encoding='utf-8')
+if hasattr(sys.stdout, 'reconfigure'):
+    sys.stdout.reconfigure(encoding='utf-8')
 
 def verify_book_output(book_key: str) -> bool:
     book = BOOKS.get(book_key)
