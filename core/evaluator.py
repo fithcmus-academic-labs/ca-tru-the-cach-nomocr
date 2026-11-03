@@ -16,8 +16,10 @@ class AlignmentEvaluator:
         Evaluate a single aligned pair:
         Returns verification details, character-level match statuses.
         """
-        nom_text = record.get("SinoNom_Char", "")
-        qn_text = record.get("ChuQN_txt", "")
+        nom_val = record.get("SinoNom_Char", "")
+        qn_val = record.get("ChuQN_txt", "")
+        nom_text = "" if nom_val is None or (isinstance(nom_val, float) and str(nom_val) == "nan") else str(nom_val)
+        qn_text = "" if qn_val is None or (isinstance(qn_val, float) and str(qn_val) == "nan") else str(qn_val)
         
         v_res = self.dict_engine.verify_sentence_pair(nom_text, qn_text)
         return {

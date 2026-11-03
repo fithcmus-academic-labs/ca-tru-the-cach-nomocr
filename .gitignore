@@ -41,3 +41,8 @@ guide/
 
 # Pipeline generated outputs
 output/
+kaggle_upload/
+
+# Large binary document formats
+*.pdf
+datasets-midterm/pdf/

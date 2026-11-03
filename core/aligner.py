@@ -30,7 +30,34 @@ class SentenceAligner:
         aligned_records = []
         sentence_counters: Dict[str, int] = {}
 
+        has_standard_cols = (
+            "SinoNom_Char" in self.baseline_df.columns
+            and "ChuQN_txt" in self.baseline_df.columns
+            and "img_id" in self.baseline_df.columns
+        )
+
         for _, row in self.baseline_df.iterrows():
+            if has_standard_cols:
+                img_id = str(row.get("img_id", f"{self.title}.000.jpg"))
+                sentence_id = str(row.get("sentence_id", ""))
+                raw_nom = "" if pd.isna(row.get("SinoNom_Char")) else str(row.get("SinoNom_Char", ""))
+                qn_text = "" if pd.isna(row.get("ChuQN_txt")) else str(row.get("ChuQN_txt", ""))
+                if not sentence_id:
+                    curr_idx = sentence_counters.get(img_id, 0) + 1
+                    sentence_counters[img_id] = curr_idx
+                    img_stem = img_id[:-4] if img_id.endswith(".jpg") else img_id
+                    sentence_id = f"{img_stem}.{curr_idx}"
+                clean_qn = TextCleaner.clean_quocngu(qn_text)
+                clean_nom = self._enhance_nom_transcription(raw_nom, clean_qn) if clean_qn else TextCleaner.clean_nom(raw_nom)
+                aligned_records.append({
+                    "img_id": img_id,
+                    "sentence_id": sentence_id,
+                    "SinoNom_Char": clean_nom,
+                    "ChuQN_txt": clean_qn,
+                    "patch_id": sentence_id
+                })
+                continue
+
             patch_id = str(row.get('Patch ID', ''))
             raw_nom = str(row.get('Nom', ''))
             qn_text = str(row.get('Proposed Alignment', ''))

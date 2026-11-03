@@ -94,6 +94,11 @@ class HanNomDictionary:
         Verify alignment between a Hán Nôm sentence and a Quốc ngữ sentence.
         Returns match status per character, total matched, and similarity score.
         """
+        if not isinstance(nom_str, str):
+            nom_str = "" if nom_str is None or (isinstance(nom_str, float) and str(nom_str) == "nan") else str(nom_str)
+        if not isinstance(qn_str, str):
+            qn_str = "" if qn_str is None or (isinstance(qn_str, float) and str(qn_str) == "nan") else str(qn_str)
+
         # Clean punctuation from Nôm: keep only CJK/Nôm characters
         nom_chars = [c for c in nom_str if '\u4e00' <= c <= '\u9fff' or '\u3400' <= c <= '\u4dbf' or '\U00020000' <= c <= '\U0002fa1f' or '\U000f0000' <= c <= '\U000fffff']
         

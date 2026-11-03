@@ -31,29 +31,29 @@ BOOKS = {
     "NOM_Y": {
         "title": "Ca Trù Thể Cách, Nôm_Y",
         "pdf_filename": "Ca Trù Thể Cách, Nôm_Y.pdf",
-        "csv_filename": "Ca Trù Thể Cách, Nôm.csv",
-        "xlsx_filename": "Ca Trù Thể Cách, Nôm.xlsx",
+        "csv_filename": "Ca Trù Thể Cách, Nôm_Y.csv",
+        "xlsx_filename": "Ca Trù Thể Cách, Nôm_Y.xlsx",
         "layout_type": "T2b",
     },
     "AB_160": {
         "title": "Ca Trù Thê Cách, AB 160, Nôm_Y",
         "pdf_filename": "Ca Trù Thê Cách, AB 160, Nôm_Y.pdf",
-        "csv_filename": "Ca Trù Thê Cách, AB 160 [Title matches another notebook, AB number listed to help differentiate] , Nôm.csv",
-        "xlsx_filename": "Ca Trù Thê Cách, AB 160 [Title matches another notebook, AB number listed to help differentiate] , Nôm.xlsx",
+        "csv_filename": "Ca Trù Thê Cách, AB 160, Nôm_Y.csv",
+        "xlsx_filename": "Ca Trù Thê Cách, AB 160, Nôm_Y.xlsx",
         "layout_type": "T2b",
     },
     "AB_431": {
         "title": "Ca Trù Thế Cách, AB 431, Nôm_Y",
         "pdf_filename": "Ca Trù Thế Cách, AB 431, Nôm_Y.pdf",
-        "csv_filename": "Ca Trù Thế Cách, AB 431 [Title matches another notebook, AB number listed to help differentiate], Nôm.csv",
-        "xlsx_filename": "Ca Trù Thế Cách, AB 431 [Title matches another notebook, AB number listed to help differentiate], Nôm.xlsx",
+        "csv_filename": "Ca Trù Thế Cách, AB 431, Nôm_Y.csv",
+        "xlsx_filename": "Ca Trù Thế Cách, AB 431, Nôm_Y.xlsx",
         "layout_type": "T2b",
     },
     "AB_456": {
         "title": "Ca Trù Thế Cách, AB 456, Nôm_Y",
         "pdf_filename": "Ca Trù Thế Cách, AB 456, Nôm_Y.pdf",
-        "csv_filename": "Ca Trù Thế Cách, AB 456 [Title matches another notebook, AB number listed to help differentiate], Nôm.csv",
-        "xlsx_filename": "Ca Trù Thế Cách, AB 456 [Title matches another notebook, AB number listed to help differentiate], Nôm.xlsx",
+        "csv_filename": "Ca Trù Thế Cách, AB 456, Nôm_Y.csv",
+        "xlsx_filename": "Ca Trù Thế Cách, AB 456, Nôm_Y.xlsx",
         "layout_type": "T2b",
     }
 }
