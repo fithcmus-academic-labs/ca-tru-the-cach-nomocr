@@ -253,20 +253,15 @@ Open `http://localhost:5173` in your browser.
 
 For research auditing, visual exploration, and step-by-step pipeline execution, the following Jupyter notebooks are provided:
 
-1. **[run_all_books.ipynb](file:///D:/User/nghonamjiwoo/Natural%20Language%20Processing/ca-tru-the-cach-nomocr/run_all_books.ipynb)** / **[run_all_books_pipeline.ipynb](file:///D:/User/nghonamjiwoo/Natural%20Language%20Processing/ca-tru-the-cach-nomocr/run_all_books_pipeline.ipynb)** (Master Turnkey Single-Click Notebook):
-   - Fully automated turnkey execution notebook: reads all book files directly from `datasets-midterm/pdf/` (23 scanned PDFs + 1 companion translation file `Thụ Dạ Lữ Hoài Ngâm Khúc_Dịch.txt`).
+1. **[run_all_books.ipynb](file:///D:/User/nghonamjiwoo/Natural%20Language%20Processing/ca-tru-the-cach-nomocr/run_all_books.ipynb)** (Master Turnkey Single-Click Notebook):
+   - **Unified all-in-one execution notebook**: reads all book files directly from `datasets-midterm/pdf/` (23 scanned PDFs + 1 companion translation file `Thụ Dạ Lữ Hoài Ngâm Khúc_Dịch.txt`).
    - Click "Restart & Run All" to process all manuscripts and immediately generate the complete `output/<Tên sách>/` folder structure ready for submission complying with `guide/Quy_định_đồ_án.pdf`.
-   - **Regulatory Compliance Validation Cell**: Automatically audits all 10 compliance rules across all books and prints a unified scorecard table.
+   - **Regulatory Compliance Validation Cell**: Automatically audits all 10 compliance rules across all 24 deliverable folders in `output/` (100% page conservation, mandatory `ch/` & `vi/` subdirectories, PPOCRLabel 4-point polygon format, UTF-8 BOM CSV, and ARGB Excel font styling) and prints a unified scorecard table.
    - **Sample Bounding Box Visualization Cell**: Automatically renders high-resolution sample pages for representative manuscripts with tight green bounding polygons for Chữ Nôm (`ch`), blue polygons for Quốc ngữ (`vi`), and red vertical margin guides (`x = 260`).
+   - **Single Page Custom Inspector**: Built-in function `render_page_with_bboxes()` allowing instant visual inspection of any page of any book by title and image name directly within notebook outputs.
    - Built-in hardware runtime benchmark and estimation for local CPU vs GPU vs Cloud API across all 24 catalog documents (2,652 pages).
 
-2. **[visualize_and_validate.ipynb](file:///D:/User/nghonamjiwoo/Natural%20Language%20Processing/ca-tru-the-cach-nomocr/visualize_and_validate.ipynb)** (Deliverables Quality Inspection & Regulatory Validation Suite):
-   - Dedicated standalone notebook for quick grading, visual inspection, and compliance auditing without re-running heavy PDF extraction.
-   - **Automated Regulatory Compliance Auditor**: Audits all 24 book deliverable folders in `output/` against the 10 official criteria from `guide/Quy_định_đồ_án.pdf` (100% page conservation, mandatory `ch/` & `vi/` subdirectories, PPOCRLabel 4-point polygon format, UTF-8 BOM CSV, and ARGB Excel font styling).
-   - **Interactive & Batch Bounding Box Visualizer**: Displays high-resolution bounding box overlays for every manuscript in `output/` directly within the notebook outputs.
-   - **Single Page Custom Inspector**: Allows instant inspection of any page of any book by title and image name.
-
-3. **[universal_book_pipeline_baseline.ipynb](file:///D:/User/nghonamjiwoo/Natural%20Language%20Processing/ca-tru-the-cach-nomocr/universal_book_pipeline_baseline.ipynb)**:
+2. **[universal_book_pipeline_baseline.ipynb](file:///D:/User/nghonamjiwoo/Natural%20Language%20Processing/ca-tru-the-cach-nomocr/universal_book_pipeline_baseline.ipynb)**:
    - Universal baseline pipeline capable of processing all 24 manuscript documents (23 scanned PDFs + 1 companion translation) in `datasets-midterm/pdf/`.
    - Implements automated layout classification (`BookClassifier`), 300 DPI high-fidelity rendering, 100% page conservation, dual OCR integration with KimHanNom cloud API and defensive parsing, standard 4-point polygon PPOCRLabel generation, dynamic programming bilingual alignment, phonetic evaluation (>= 95% threshold), and 10/10 automated regulatory compliance audit.
 
