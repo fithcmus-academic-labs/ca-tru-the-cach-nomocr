@@ -253,7 +253,7 @@ Open `http://localhost:5173` in your browser.
 
 The complete end-to-end workflow is consolidated into a single master turnkey notebook:
 
-**[run_all_books.ipynb](file:///D:/User/nghonamjiwoo/Natural%20Language%20Processing/ca-tru-the-cach-nomocr/run_all_books.ipynb)** (Master Turnkey All-in-One Notebook):
+**[baseline.ipynb](file:///D:/User/nghonamjiwoo/Natural%20Language%20Processing/ca-tru-the-cach-nomocr/baseline.ipynb)** (Master Turnkey All-in-One Notebook):
 - **Turnkey Batch Pipeline**: Reads all book files directly from `datasets-midterm/pdf/` (23 scanned PDFs + 1 companion translation file `Thụ Dạ Lữ Hoài Ngâm Khúc_Dịch.txt`).
 - **One-Click Execution**: Click "Restart & Run All" to process all manuscripts and immediately generate the complete `output/<Tên sách>/` folder structure ready for submission complying with `guide/Quy_định_đồ_án.pdf`.
 - **Regulatory Compliance Validation Cell**: Automatically audits all 10 compliance rules across all 24 deliverable folders in `output/` (100% page conservation, mandatory `ch/` & `vi/` subdirectories, PPOCRLabel 4-point polygon format, UTF-8 BOM CSV, and ARGB Excel font styling) and prints a unified scorecard table.
@@ -266,7 +266,7 @@ jupyter lab
 # or
 jupyter notebook
 ```
-Then open `run_all_books.ipynb` and select **Kernel -> Restart Kernel and Run All Cells**.
+Then open `baseline.ipynb` and select **Kernel -> Restart Kernel and Run All Cells**.
 
 ---
 

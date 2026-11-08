@@ -1,5 +1,5 @@
 """
-Build master turnkey notebook: run_all_books.ipynb
+Build master turnkey notebook: baseline.ipynb
 Consolidates the complete pipeline:
 1. Environment Setup & Core Module Imports
 2. Catalog Discovery from datasets-midterm/pdf/
@@ -655,9 +655,9 @@ def create_master_notebook():
         "nbformat_minor": 4
     }
     
-    with open("run_all_books.ipynb", "w", encoding="utf-8") as f:
+    with open("baseline.ipynb", "w", encoding="utf-8") as f:
         json.dump(nb, f, ensure_ascii=False, indent=1)
-    print("Successfully built unified master notebook: run_all_books.ipynb")
+    print("Successfully built unified master notebook: baseline.ipynb")
 
 if __name__ == "__main__":
     create_master_notebook()
