@@ -44,3 +44,4 @@ kaggle_upload/
 # Large binary document formats
 *.pdf
 datasets-midterm/pdf/
+*.zip

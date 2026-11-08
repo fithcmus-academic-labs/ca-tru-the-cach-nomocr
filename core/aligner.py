@@ -103,8 +103,8 @@ class SentenceAligner:
         raw_nom_clean = TextCleaner.clean_nom(raw_nom)
         v_res = self.dict_engine.verify_sentence_pair(raw_nom_clean, clean_qn)
         
-        # If already high similarity, keep original
-        if v_res["similarity_pct"] >= 95.0:
+        # If already high similarity and non-empty, keep original
+        if raw_nom_clean and v_res["similarity_pct"] >= 95.0:
             return raw_nom_clean
 
         # Reconstruct characters

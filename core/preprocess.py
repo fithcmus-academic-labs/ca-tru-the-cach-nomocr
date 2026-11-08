@@ -100,8 +100,17 @@ class DocumentPreprocessor:
     def classify_page(img_path: Path, page_num: int, total_pages: int) -> str:
         """
         Classify page into 'misc', 'blank', or 'content'.
+        Excludes book covers, inner title pages, and French prefaces.
         """
-        if total_pages > 4:
+        fname = img_path.name.lower()
+        if "thonomhoxuanhuonghoangxuanhan" in fname and page_num <= 7:
+            return "misc"
+        if "tho ho xuan huong [chu nom]" in fname and page_num == 1:
+            return "misc"
+        if ("_y" in fname or "digcoll" in fname or "thánh" in fname or "thâp nhị" in fname) and total_pages > 20:
+            if page_num <= 4 or page_num == total_pages:
+                return "misc"
+        elif total_pages > 16:
             if page_num in (1, 2) or page_num == total_pages:
                 return "misc"
 
@@ -109,11 +118,14 @@ class DocumentPreprocessor:
         if img is None:
             return "misc"
 
-        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        h, w, _ = img.shape
+        # Check inner 80% region to ignore scanner borders
+        inner = img[int(h * 0.1):int(h * 0.9), int(w * 0.1):int(w * 0.9)]
+        gray = cv2.cvtColor(inner, cv2.COLOR_BGR2GRAY)
         lap_var = cv2.Laplacian(gray, cv2.CV_64F).var()
-        mean_val = gray.mean()
+        std_val = float(gray.std())
 
-        if mean_val > 242 and lap_var < 12.0:
+        if std_val < 14.0 and lap_var < 15.0:
             return "blank"
 
         return "content"
@@ -146,18 +158,18 @@ class DocumentPreprocessor:
     @staticmethod
     def _build_ink_binary(roi_bgr: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
         """
-        Build a binary mask that strongly captures both black Hán Nôm ink and red cursive Quốc ngữ ink,
+        Build a binary mask that strongly captures both black Hán Nôm ink and red/purple cursive Quốc ngữ ink,
         while suppressing light notebook grid/ruling lines.
-        Returns (binary_ink_mask, red_chrominance_map).
+        Returns (binary_ink_mask, signed_red_minus_green_map).
         """
         g = roi_bgr[:, :, 1].astype(np.int16)
         r = roi_bgr[:, :, 2].astype(np.int16)
 
         bg_g = float(np.percentile(g, 85))
-        dark_ink = (bg_g - g) > max(28.0, (bg_g - float(np.percentile(g, 5))) * 0.22)
+        dark_ink = (bg_g - g) > max(26.0, (bg_g - float(np.percentile(g, 5))) * 0.22)
 
-        red_diff = np.clip(r - g, 0, 255).astype(np.uint8)
-        red_ink = (red_diff > 24) & ((bg_g - g) > 15.0)
+        signed_rg = (r - g).astype(np.float32)
+        red_ink = (signed_rg > 22.0) & ((bg_g - g) > 14.0)
 
         combined = ((dark_ink | red_ink).astype(np.uint8)) * 255
 
@@ -171,7 +183,7 @@ class DocumentPreprocessor:
         open_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (2, 2))
         cleaned_ink = cv2.morphologyEx(cleaned_ink, cv2.MORPH_OPEN, open_kernel)
 
-        return cleaned_ink, red_diff
+        return cleaned_ink, signed_rg
 
     def segment_t2b_lines(self, img_path: Path) -> Dict[str, List[dict]]:
         """
@@ -196,7 +208,7 @@ class DocumentPreprocessor:
         bot_cut = int(h * 0.96)
         main_area = img[top_cut:bot_cut, margin_x:right_limit]
 
-        ink_mask, red_diff = self._build_ink_binary(main_area)
+        ink_mask, signed_rg = self._build_ink_binary(main_area)
 
         close_w = max(25, int((right_limit - margin_x) * 0.035))
         kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (close_w, 3))
@@ -244,9 +256,9 @@ class DocumentPreprocessor:
                     mid_y = (sy + ey) // 2
                     top_ink = ink_mask[sy:mid_y, :] > 0
                     bot_ink = ink_mask[mid_y:ey, :] > 0
-                    top_red = float(red_diff[sy:mid_y, :][top_ink].mean()) if top_ink.any() else 0.0
-                    bot_red = float(red_diff[mid_y:ey, :][bot_ink].mean()) if bot_ink.any() else 0.0
-                    if top_red < 16.0 and bot_red > 21.0:
+                    top_rg = float(signed_rg[sy:mid_y, :][top_ink].mean()) if top_ink.any() else 0.0
+                    bot_rg = float(signed_rg[mid_y:ey, :][bot_ink].mean()) if bot_ink.any() else 0.0
+                    if abs(top_rg - bot_rg) > 5.5:
                         should_split = True
 
                 if should_split and span_h >= min_line_h * 2:
@@ -295,23 +307,34 @@ class DocumentPreprocessor:
             if (tx2 - tx1) < 25 or (ty2 - ty1) < 12:
                 continue
 
-            if (ty1 < int(h * 0.08) or ty2 > int(h * 0.92)) and (tx2 - tx1) < int(w * 0.12):
+            # Exclude small top folio headers (e.g. "f° 2a col. 1-5", "Hymne I") or bottom page numbers
+            if (ty1 < int(h * 0.10) or ty2 > int(h * 0.91)) and (tx2 - tx1) < int(w * 0.28):
                 continue
 
-            box_ink = ink_mask[sy:ey, active_cols[0]:active_cols[-1] + 1] > 0
-            box_red = red_diff[sy:ey, active_cols[0]:active_cols[-1] + 1]
-            mean_red_diff = float(box_red[box_ink].mean()) if box_ink.any() else 0.0
+            # Compute signed (R - G) on the core darkest ink pixels of this line
+            roi_line_bgr = img[ty1:ty2, tx1:tx2]
+            g_l = roi_line_bgr[:, :, 1].astype(np.float32)
+            r_l = roi_line_bgr[:, :, 2].astype(np.float32)
+            core_mask = g_l < np.percentile(g_l, 72)
+            mean_signed_rg = float((r_l[core_mask] - g_l[core_mask]).mean()) if core_mask.any() else 0.0
 
             line_items.append({
                 "points": [[tx1, ty1], [tx2, ty1], [tx2, ty2], [tx1, ty2]],
                 "y_center": (ty1 + ty2) / 2.0,
-                "mean_red": mean_red_diff,
+                "signed_rg": mean_signed_rg,
                 "width": tx2 - tx1,
                 "height": ty2 - ty1
             })
 
         if not line_items:
             return {"ch": [], "vi": []}
+
+        # Filter out ultra-thin descender-tail bands (e.g. cursive 'y'/'g' loops below main line)
+        if len(line_items) >= 6:
+            med_h = float(np.median([it["height"] for it in line_items]))
+            filtered_items = [it for it in line_items if it["height"] >= med_h * 0.48]
+            if len(filtered_items) >= 4:
+                line_items = filtered_items
 
         # Case 2: Top-Nôm / Bottom-Quốc-ngữ layout (ThoNomHoXuanHuongHoangXuanHanSuuTapVaGhiChu)
         if "thonomhoxuanhuonghoangxuanhan" in fname_lower:
@@ -331,32 +354,62 @@ class DocumentPreprocessor:
                     vi_boxes.append(b)
             return {"ch": ch_boxes, "vi": vi_boxes}
 
-        # Case 3: Red + Black ink differentiation (Yale student notebooks: black = Hán Nôm, red = Quốc ngữ)
-        red_scores = [item["mean_red"] for item in line_items]
-        has_red_ink_lines = any(r > 22.0 for r in red_scores)
-        has_black_ink_lines = any(r < 16.0 for r in red_scores)
+        # Case 3: Ink-chrominance clustering + Pairwise Upper=CH / Lower=VI alignment
+        rg_scores = [item["signed_rg"] for item in line_items]
+        rg_std = float(np.std(rg_scores)) if len(rg_scores) > 1 else 0.0
+        rg_range = (max(rg_scores) - min(rg_scores)) if len(rg_scores) > 1 else 0.0
 
+        is_yale_style = any(k in fname_lower for k in ("_y", "digcoll", "ca trù", "ca tru", "thánh", "thâp nhị"))
+
+        # Check if all lines on this Yale page are written in a single uniform ink (e.g. Preface in Hán or Prose Hán Nôm summary)
+        if is_yale_style and rg_std < 1.8 and rg_range < 4.5:
+            # If the page has vertical columns instead of horizontal lines (like Tì Bà Quôc Âm Preface in Hán),
+            # check if vertical column segmentation gives cleaner vertical boxes
+            if "preface in hán" in fname_lower:
+                vert_cols = self.segment_vertical_nom_columns(img_path)
+                if len(vert_cols) >= 4:
+                    return {"ch": vert_cols, "vi": []}
+            return {
+                "ch": [{"points": item["points"], "y_center": item["y_center"]} for item in line_items],
+                "vi": []
+            }
+
+        # When two distinct inks exist on the page (rg_std >= 1.8 or rg_range >= 4.5):
+        # Determine whether the UPPER line of each interlinear pair (Hán Nôm) has lower or higher (R - G)
+        if rg_std >= 1.8 or rg_range >= 4.5:
+            med_rg = float(np.median(rg_scores))
+            upper_is_low_votes = 0
+            upper_is_high_votes = 0
+            for i in range(len(line_items) - 1):
+                c1 = rg_scores[i] < med_rg
+                c2 = rg_scores[i + 1] < med_rg
+                if c1 != c2:
+                    if c1:
+                        upper_is_low_votes += 1
+                    else:
+                        upper_is_high_votes += 1
+
+            ch_is_low_rg = upper_is_low_votes >= upper_is_high_votes
+            ch_boxes = []
+            vi_boxes = []
+            for item in line_items:
+                b = {"points": item["points"], "y_center": item["y_center"]}
+                is_low = item["signed_rg"] < med_rg
+                if (ch_is_low_rg and is_low) or (not ch_is_low_rg and not is_low):
+                    ch_boxes.append(b)
+                else:
+                    vi_boxes.append(b)
+            return {"ch": ch_boxes, "vi": vi_boxes}
+
+        # Case 4: Monochrome interlinear pages (e.g. Tho Ho Xuan Huong [chu nom])
         ch_boxes = []
         vi_boxes = []
-
-        if has_red_ink_lines and has_black_ink_lines:
-            threshold_red = 18.5
-            for item in line_items:
-                b = {"points": item["points"], "y_center": item["y_center"]}
-                if item["mean_red"] >= threshold_red:
-                    vi_boxes.append(b)
-                else:
-                    ch_boxes.append(b)
-        elif all(r < 16.0 for r in red_scores) and ("digcoll" in fname_lower or "ca trù" in fname_lower or "ca tru" in fname_lower):
-            for item in line_items:
-                ch_boxes.append({"points": item["points"], "y_center": item["y_center"]})
-        else:
-            for idx, item in enumerate(line_items):
-                b = {"points": item["points"], "y_center": item["y_center"]}
-                if idx % 2 == 0:
-                    ch_boxes.append(b)
-                else:
-                    vi_boxes.append(b)
+        for idx, item in enumerate(line_items):
+            b = {"points": item["points"], "y_center": item["y_center"]}
+            if idx % 2 == 0:
+                ch_boxes.append(b)
+            else:
+                vi_boxes.append(b)
 
         return {"ch": ch_boxes, "vi": vi_boxes}
 
@@ -431,7 +484,8 @@ class DocumentPreprocessor:
         Segment vertical Sino-Nom columns (Tnom, Tnomw, T1/T2 vertical) adhering to regulation:
         - Level: Vertical columns (cột dọc).
         - Ordering: RIGHT-TO-LEFT, TOP-TO-BOTTOM (từ phải sang trái, từ trên xuống dưới).
-        - Excludes outer woodblock borders and margin frame lines.
+        - Uses adaptive percentile ink thresholding inside inner ROI so white scanner borders
+          around brown/yellow manuscript paper never skew thresholding.
         - Exactly 4 points per polygon.
         """
         img = cv2_imread_unicode(img_path)
@@ -439,34 +493,37 @@ class DocumentPreprocessor:
             return []
 
         h, w, _ = img.shape
-        gray_full = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-        _, thresh_full = cv2.threshold(gray_full, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
+        # First crop outer margin to exclude any white scanner border around aged brown/yellow paper
+        init_y1, init_y2 = int(h * 0.035), int(h * 0.965)
+        init_x1, init_x2 = int(w * 0.075), int(w * 0.925)
+        inner_bgr = img[init_y1:init_y2, init_x1:init_x2]
 
-        # Detect top and bottom woodblock border bars if present (continuous horizontal line > 68% width)
-        row_density = (thresh_full > 0).sum(axis=1) / float(w)
-        top_candidates = np.where(row_density[int(h * 0.04):int(h * 0.22)] > 0.68)[0]
-        bot_candidates = np.where(row_density[int(h * 0.78):int(h * 0.96)] > 0.68)[0]
+        ink_inner, _ = self._build_ink_binary(inner_bgr)
+        ih, iw = ink_inner.shape
 
-        pad_y_top = int(h * 0.04) + int(top_candidates[-1]) + 12 if len(top_candidates) > 0 else int(h * 0.09)
-        pad_y_bot = int(h * 0.75) + int(bot_candidates[0]) - 12 if len(bot_candidates) > 0 else int(h * 0.91)
-        if pad_y_bot <= pad_y_top + int(h * 0.3):
-            pad_y_top, pad_y_bot = int(h * 0.09), int(h * 0.91)
+        # Detect top and bottom woodblock border bars inside inner ROI (> 65% width)
+        row_density = (ink_inner > 0).sum(axis=1) / float(iw)
+        top_candidates = np.where(row_density[:int(ih * 0.18)] > 0.65)[0]
+        bot_candidates = np.where(row_density[int(ih * 0.82):] > 0.65)[0]
 
-        pad_x = int(w * 0.065)
-        roi_thresh = thresh_full[pad_y_top:pad_y_bot, pad_x:w - pad_x]
+        sub_y1 = int(top_candidates[-1]) + 10 if len(top_candidates) > 0 else 0
+        sub_y2 = int(ih * 0.82) + int(bot_candidates[0]) - 10 if len(bot_candidates) > 0 else ih
+        if sub_y2 <= sub_y1 + int(ih * 0.3):
+            sub_y1, sub_y2 = 0, ih
+
+        roi_thresh = ink_inner[sub_y1:sub_y2, :]
         rh, rw = roi_thresh.shape
 
-        # Remove thin vertical/horizontal ruling lines inside the frame
-        vert_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (1, max(80, int(rh * 0.55))))
+        # Remove continuous vertical/horizontal frame/grid lines (> 55% height)
+        vert_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (1, max(70, int(rh * 0.55))))
         vert_lines = cv2.morphologyEx(roi_thresh, cv2.MORPH_OPEN, vert_kernel)
         text_only = cv2.subtract(roi_thresh, vert_lines)
 
         col_proj = (text_only > 0).sum(axis=0)
-        # Smooth projection slightly
         col_proj_smooth = np.convolve(col_proj, np.ones(5) / 5.0, mode="same")
-        min_col_ink = max(14, int(rh * 0.04))
-        min_col_w = max(22, int(rw * 0.025))
-        max_single_col_w = int(rw * 0.085)
+        min_col_ink = max(12, int(rh * 0.035))
+        min_col_w = max(20, int(rw * 0.022))
+        max_single_col_w = int(rw * 0.095)
 
         col_spans: List[Tuple[int, int]] = []
         in_col = False
@@ -507,18 +564,27 @@ class DocumentPreprocessor:
         for sx, ex in col_spans:
             col_slice = text_only[:, sx:ex]
             row_proj = (col_slice > 0).sum(axis=1)
-            active_rows = np.where(row_proj >= 3)[0]
+            active_rows = np.where(row_proj >= 2)[0]
             if len(active_rows) == 0:
                 continue
             sy = int(active_rows[0])
             ey = int(active_rows[-1])
-            if (ey - sy) < int(rh * 0.12):
+            if (ey - sy) < int(rh * 0.10):
                 continue
 
-            x1 = max(0, pad_x + sx - 3)
-            x2 = min(w, pad_x + ex + 3)
-            y1 = max(0, pad_y_top + sy - 4)
-            y2 = min(h, pad_y_top + ey + 4)
+            col_ink = (col_slice[sy:ey + 1, :] > 0).sum(axis=0)
+            active_cols = np.where(col_ink >= 2)[0]
+            if len(active_cols) > 0:
+                sx_tight = sx + int(active_cols[0])
+                ex_tight = sx + int(active_cols[-1])
+            else:
+                sx_tight = sx
+                ex_tight = ex
+
+            x1 = max(0, init_x1 + sx_tight - 2)
+            x2 = min(w, init_x1 + ex_tight + 2)
+            y1 = max(0, init_y1 + sub_y1 + sy - 3)
+            y2 = min(h, init_y1 + sub_y1 + ey + 3)
             raw_boxes.append((x1, y1, x2, y2))
 
         # Sort strictly RIGHT-TO-LEFT (x descending), then TOP-TO-BOTTOM (y ascending)
