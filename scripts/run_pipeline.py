@@ -152,10 +152,14 @@ def run_book_pipeline(book_key: str):
         page_to_records[img_id].append(r)
 
     # Segment Hán Nôm lines for images in ch/
+    is_vertical_nom = "Tnom" in book.get("layout_type", "")
     ch_labels_by_img = {}
     for page_num, img_name, img_path in ch_images:
-        seg_res = preprocessor.segment_t2b_lines(img_path)
-        ch_boxes = seg_res["ch"]
+        if is_vertical_nom:
+            ch_boxes = preprocessor.segment_vertical_nom_columns(img_path)
+        else:
+            seg_res = preprocessor.segment_t2b_lines(img_path)
+            ch_boxes = seg_res["ch"]
         recs_for_page = page_to_records.get(img_name, [])
         ch_annotated = []
         for b_idx, box in enumerate(ch_boxes):
