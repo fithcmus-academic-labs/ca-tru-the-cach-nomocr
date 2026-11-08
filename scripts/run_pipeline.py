@@ -77,31 +77,57 @@ def run_book_pipeline(book_key: str):
     preprocessor = DocumentPreprocessor(book, OUTPUT_DIR)
 
     # ---------------------------------------------------------
-    # STEP 1: PDF SPLITTING & PAGE CLASSIFICATION
+    # STEP 1: PDF SPLITTING & ACCURATE SCRIPT-SPECIFIC PAGE CLASSIFICATION
     # ---------------------------------------------------------
-    print("\n--- STEP 1: Extracting and Classifying Pages ---")
+    print("\n--- STEP 1: Extracting and Classifying Pages (Hán Nôm -> ch/, Quốc ngữ -> vi/, Phụ -> misc/) ---")
     extracted_pages = preprocessor.split_and_extract_images(str(pdf_path))
     print(f"Extracted {len(extracted_pages)} total pages.")
 
-    content_images = []
-    blank_images = []
+    # Determine script distribution according to guide/Quy_định_đồ_án.pdf
+    ch_img_names = set()
+    vi_img_names = set()
+
+    if csv_path.exists():
+        import pandas as pd
+        df_csv = pd.read_csv(csv_path)
+        if "target_folder" in df_csv.columns:
+            for _, r in df_csv.iterrows():
+                tgt = str(r.get("target_folder", "")).strip()
+                img = str(r.get("img_id", "")).strip()
+                if img and img != "nan":
+                    if "ch" in tgt:
+                        ch_img_names.add(img)
+                    if "vi" in tgt:
+                        vi_img_names.add(img)
+        else:
+            # Default T2b/T2bw: content pages contain both Hán Nôm and Quốc ngữ
+            for img in df_csv["img_id"].dropna().unique():
+                img_str = str(img).strip()
+                ch_img_names.add(img_str)
+                vi_img_names.add(img_str)
+
+    ch_images = []
+    vi_images = []
     misc_images = []
 
     for page_num, img_name, img_path in extracted_pages:
-        category = preprocessor.classify_page(img_path, page_num, len(extracted_pages))
-        if category == "content":
-            content_images.append((page_num, img_name, img_path))
-            # Copy to ch/ and vi/
+        has_ch = img_name in ch_img_names
+        has_vi = img_name in vi_img_names
+
+        if has_ch:
+            ch_images.append((page_num, img_name, img_path))
             shutil.copy2(str(img_path), str(preprocessor.dir_ch / img_name))
+        if has_vi:
+            vi_images.append((page_num, img_name, img_path))
             shutil.copy2(str(img_path), str(preprocessor.dir_vi / img_name))
-        elif category == "blank":
-            blank_images.append((page_num, img_name, img_path))
-            shutil.copy2(str(img_path), str(preprocessor.dir_blank / img_name))
-        else:
+
+        if not has_ch and not has_vi:
             misc_images.append((page_num, img_name, img_path))
             shutil.copy2(str(img_path), str(preprocessor.dir_misc / img_name))
 
-    print(f"Classification: Content={len(content_images)}, Blank={len(blank_images)}, Misc={len(misc_images)}")
+    print(f"Classification: ch (Hán Nôm)={len(ch_images)}, vi (Quốc ngữ)={len(vi_images)}, misc (Phụ/Bìa/Trắng)={len(misc_images)}")
+    total_conserved = len(set([x[1] for x in ch_images]).union([x[1] for x in vi_images]).union([x[1] for x in misc_images]))
+    print(f"Page Conservation: {total_conserved}/{len(extracted_pages)} pages preserved ({100 * total_conserved / len(extracted_pages):.1f}%).")
 
     # Copy original PDF to book directory
     shutil.copy2(str(pdf_path), str(book_out_dir / f"{title}.pdf"))
@@ -118,11 +144,6 @@ def run_book_pipeline(book_key: str):
     # STEP 3: SEGMENTATION & PPOCRLABEL GENERATION
     # ---------------------------------------------------------
     print("\n--- STEP 3: Generating PPOCRLabel Annotations (ch/ & vi/) ---")
-    # Group aligned sentences by image
-    ch_labels_by_img = {}
-    vi_labels_by_img = {}
-
-    # Map aligned text by page
     page_to_records = {}
     for r in aligned_records:
         img_id = r["img_id"]
@@ -130,32 +151,28 @@ def run_book_pipeline(book_key: str):
             page_to_records[img_id] = []
         page_to_records[img_id].append(r)
 
-    for page_num, img_name, img_path in content_images:
+    # Segment Hán Nôm lines for images in ch/
+    ch_labels_by_img = {}
+    for page_num, img_name, img_path in ch_images:
         seg_res = preprocessor.segment_t2b_lines(img_path)
         ch_boxes = seg_res["ch"]
-        vi_boxes = seg_res["vi"]
-
-        # Match with aligned records for this page
         recs_for_page = page_to_records.get(img_name, [])
-
-        # Assign Nôm text to CH boxes
         ch_annotated = []
         for b_idx, box in enumerate(ch_boxes):
             text = recs_for_page[b_idx]["SinoNom_Char"] if b_idx < len(recs_for_page) else ""
-            ch_annotated.append({
-                "transcription": text,
-                "points": box["points"]
-            })
+            ch_annotated.append({"transcription": text, "points": box["points"]})
         ch_labels_by_img[img_name] = ch_annotated
 
-        # Assign Quốc ngữ text to VI boxes
+    # Segment Quốc ngữ lines for images in vi/
+    vi_labels_by_img = {}
+    for page_num, img_name, img_path in vi_images:
+        seg_res = preprocessor.segment_t2b_lines(img_path)
+        vi_boxes = seg_res["vi"]
+        recs_for_page = page_to_records.get(img_name, [])
         vi_annotated = []
         for b_idx, box in enumerate(vi_boxes):
             text = recs_for_page[b_idx]["ChuQN_txt"] if b_idx < len(recs_for_page) else ""
-            vi_annotated.append({
-                "transcription": text,
-                "points": box["points"]
-            })
+            vi_annotated.append({"transcription": text, "points": box["points"]})
         vi_labels_by_img[img_name] = vi_annotated
 
     PPOCRLabelFormatter.write_ppocr_dataset(preprocessor.dir_ch, "ch", ch_labels_by_img)
