@@ -270,6 +270,10 @@ For research auditing, visual exploration, and step-by-step pipeline execution, 
    - End-to-end execution on `Ca Trù Thê Cách, AB 160, Nôm_Y`.
    - Side-by-side rendering of scanned crops, bounding polygons, bilingual alignment tables, and quality metrics.
 
+5. **[universal_book_pipeline_baseline.ipynb](universal_book_pipeline_baseline.ipynb)**:
+   - Universal baseline pipeline capable of processing all 23 manuscript PDFs in `datasets-midterm/pdf/`.
+   - Implements automated layout classification (`BookClassifier`), 300 DPI high-fidelity rendering, 100% page conservation, dual OCR integration with KimHanNom cloud API and defensive parsing, standard 4-point polygon PPOCRLabel generation, dynamic programming bilingual alignment, phonetic evaluation ($\ge 95\%$ threshold), and 10/10 automated regulatory compliance audit.
+
 To run the notebooks:
 ```bash
 jupyter lab
