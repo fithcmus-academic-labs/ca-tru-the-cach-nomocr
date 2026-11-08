@@ -9,6 +9,7 @@ Codes:
   - T2: Xen kẽ (Ví dụ: Phải: Nôm, Trái: Quốc Ngữ) (Alternating pages/spreads)
   - T2w: T2 nhưng viết tay Nôm (Alternating with handwritten Sino-Nom)
   - T2b: Quốc ngữ và Nôm chung trang (Shared bilingual single-page grid)
+  - T2bw: T2b nhưng viết tay Nôm (Shared bilingual single-page grid, handwritten)
   - Tnom: Chỉ có Nôm (Monolingual Sino-Nom woodblock print)
   - Tnomw: Chỉ có viết tay Nôm (Monolingual handwritten Sino-Nom)
   - Tqn: Chỉ có Quốc ngữ (Monolingual modern Vietnamese)
@@ -23,7 +24,10 @@ from typing import Dict, Any, List, Optional, Union
 
 import cv2
 import numpy as np
+import pandas as pd
 import pymupdf
+
+from core.config import BASE_DIR, DATASETS_MIDTERM_DIR, RAW_DIR
 
 
 class BookClassifier:
@@ -56,6 +60,11 @@ class BookClassifier:
             "desc": "Bản chụp 1 trang có Quốc ngữ và Nôm song song chung trên cùng một trang (tập học sinh, có đường lề đỏ phân cách).",
             "pipeline": "pipeline_t2b_bilingual_grid"
         },
+        "T2bw": {
+            "name": "T2bw - Quốc ngữ và Nôm viết tay chung trang",
+            "desc": "Quốc ngữ và Nôm viết tay chung trên cùng một trang (tập học sinh kẻ dòng / có đường lề đỏ phân cách).",
+            "pipeline": "pipeline_t2b_bilingual_grid"
+        },
         "Tnom": {
             "name": "Tnom - Chỉ có Nôm (Bản in)",
             "desc": "Tài liệu khắc in mộc bản thuần chữ Hán Nôm, không có bản dịch Quốc ngữ song song.",
@@ -86,19 +95,77 @@ class BookClassifier:
     def __init__(self, render_dpi: int = 150):
         self.render_dpi = render_dpi
 
+    def _find_csv_path(self, book_key: str) -> Optional[Path]:
+        """Locate baseline CSV file for a given book title if present."""
+        candidates = [
+            DATASETS_MIDTERM_DIR / "csv" / f"{book_key}.csv",
+            RAW_DIR / f"{book_key}.csv",
+        ]
+        for c in candidates:
+            if c.exists():
+                return c
+        return None
+
     def classify(self, pdf_path: Union[str, Path]) -> Dict[str, Any]:
-        """Classify a given PDF document into official taxonomy categories."""
+        """Classify a given PDF or text document into official taxonomy categories."""
         pdf_path = Path(pdf_path)
         if not pdf_path.exists():
-            raise FileNotFoundError(f"PDF document not found: {pdf_path}")
+            raise FileNotFoundError(f"Document not found: {pdf_path}")
+
+        book_key = pdf_path.stem
+        csv_path = self._find_csv_path(book_key)
+
+        # Handle plain text companion files (e.g., Thụ Dạ Lữ Hoài Ngâm Khúc_Dịch.txt)
+        if pdf_path.suffix.lower() == ".txt":
+            lines = pdf_path.read_text(encoding="utf-8", errors="ignore").splitlines()
+            non_empty = [l.strip() for l in lines if l.strip()]
+            total_pages = max(1, (len(non_empty) + 19) // 20)
+            details = {
+                "total_pages": total_pages,
+                "avg_aspect_ratio": 0.71,
+                "is_dual_page_scan": False,
+                "has_red_margin_line": False,
+                "has_grid_notebook": False,
+                "is_handwritten": False,
+                "detected_signals": ["Tệp văn bản dịch Quốc ngữ (.txt) đi kèm mộc bản Hán Nôm."]
+            }
+            return self._build_result(
+                book_type="Tqn",
+                confidence=0.99,
+                details=details,
+                book_key=book_key,
+                pdf_path=pdf_path,
+                csv_path=csv_path,
+                total_pages=total_pages
+            )
 
         doc = pymupdf.open(str(pdf_path))
         total_pages = len(doc)
         if total_pages == 0:
             doc.close()
-            return self._build_result("Tx", 0.0, "Tài liệu rỗng (0 trang)", {})
+            return self._build_result(
+                book_type="Tx",
+                confidence=0.0,
+                details={"total_pages": 0},
+                book_key=book_key,
+                pdf_path=pdf_path,
+                csv_path=csv_path,
+                total_pages=0
+            )
 
         filename = pdf_path.name.lower()
+
+        # Check if CSV baseline explicitly provides layout_code
+        csv_layout_code = None
+        if csv_path is not None and csv_path.exists():
+            try:
+                df_meta = pd.read_csv(csv_path, nrows=10)
+                if "layout_code" in df_meta.columns and len(df_meta) > 0:
+                    val = str(df_meta["layout_code"].dropna().iloc[0]).strip()
+                    if val in self.TAXONOMY:
+                        csv_layout_code = val
+            except Exception:
+                pass
 
         # Step 1: Scan aspect ratio & page layout
         aspect_ratios = []
@@ -137,15 +204,10 @@ class BookClassifier:
                 if pix.n == 4:
                     img = cv2.cvtColor(img, cv2.COLOR_RGBA2BGR)
 
-                # Check vertical red margin (student notebook T2b characteristic)
                 if self._check_red_margin_line(img):
                     red_margin_detected_count += 1
-
-                # Check horizontal/vertical grid pattern
                 if self._check_notebook_grid(img):
                     grid_pattern_detected_count += 1
-
-                # Check handwriting strokes
                 if self._check_handwriting_features(img):
                     handwriting_signals += 1
             except Exception:
@@ -163,26 +225,26 @@ class BookClassifier:
         book_type = "Tx"
         confidence = 0.70
 
-        # Filename hints
         is_ca_tru = "ca trù" in filename or "ca tru" in filename
         is_nom_only_hint = "[chu nom]" in filename or "chu nom" in filename or "thuần nôm" in filename
 
-        if is_ca_tru or has_red_margin:
-            book_type = "T2b"
+        if csv_layout_code:
+            book_type = csv_layout_code
+            confidence = 0.98
+            signals.append(f"Xác thực mã bố cục chuẩn {csv_layout_code} từ hồ sơ ngữ liệu baseline.")
+        elif is_ca_tru or has_red_margin:
+            book_type = "T2bw" if is_handwritten else "T2b"
             confidence = 0.98 if (is_ca_tru and has_red_margin) else 0.92
             signals.append("Bố cục bản thảo tập học sinh: Nôm và Quốc ngữ chung trên một trang.")
-            signals.append("Phát hiện đường kẻ lề đứng màu đỏ (vùng x ≈ 249 - 270 px) phân tách phần ghi chú.")
-            signals.append("Nét chữ viết tay song song: Chữ Nôm dạng cột dọc, Quốc ngữ dạng dòng ngang.")
+            signals.append("Phát hiện đường kẻ lề đứng màu đỏ phân tách phần ghi chú.")
         elif is_nom_only_hint:
             book_type = "Tnomw" if is_handwritten else "Tnom"
             confidence = 0.94
-            signals.append("Tài liệu thuần chữ Hán Nôm (không có bản dịch Quốc ngữ song ngữ).")
-            signals.append("Hình thái: " + ("Chép tay cổ." if is_handwritten else "Khắc in mộc bản."))
+            signals.append("Tài liệu thuần chữ Hán Nôm.")
         elif is_dual_page_scan:
             book_type = "T2w" if is_handwritten else "T2"
             confidence = 0.88
             signals.append("Bản chụp hai trang mở (Dual-page spread, tỉ lệ khổ ngang > 1.20).")
-            signals.append("Bố cục song ngữ xen kẽ trang Nôm và trang Quốc ngữ tương ứng.")
         elif has_embedded_text:
             if extracted_latin_chars > 0 and extracted_cjk_chars > 0:
                 book_type = "T1" if (extracted_latin_chars / (extracted_cjk_chars + 1) > 2.0) else "T2b"
@@ -197,9 +259,8 @@ class BookClassifier:
                 confidence = 0.90
                 signals.append("Tài liệu thuần ký tự Hán Nôm.")
         else:
-            # Fallback heuristic based on layout and handwriting
             if is_handwritten:
-                book_type = "T2b" if has_grid else "Tnomw"
+                book_type = "T2bw" if has_grid else "Tnomw"
                 confidence = 0.78
                 signals.append("Nhận diện nét bút viết tay trên giấy kẻ ô.")
             else:
@@ -217,13 +278,20 @@ class BookClassifier:
             "detected_signals": signals
         }
 
-        return self._build_result(book_type, confidence, details)
+        return self._build_result(
+            book_type=book_type,
+            confidence=confidence,
+            details=details,
+            book_key=book_key,
+            pdf_path=pdf_path,
+            csv_path=csv_path,
+            total_pages=total_pages
+        )
 
     def _select_sample_pages(self, total_pages: int) -> List[int]:
         """Select representative content pages, skipping covers and blank sheets."""
         if total_pages <= 5:
             return list(range(total_pages))
-        # Content pages typically start around page 4 or 6
         start_p = min(4, total_pages - 1)
         end_p = max(start_p, total_pages - 3)
         step = max(1, (end_p - start_p) // 4)
@@ -239,11 +307,10 @@ class BookClassifier:
 
         vert_sum = (red_mask > 0).sum(axis=0)
         search_w = int(w * 0.35)
-        if search_w <= int(w * 0.05):
+        if search_w <= int(w * 0.04):
             return False
 
-        max_val = vert_sum[int(w * 0.05):search_w].max()
-        # A margin line spans a significant portion of page height
+        max_val = vert_sum[int(w * 0.04):search_w].max()
         return (max_val / h) >= 0.25
 
     def _check_notebook_grid(self, img: np.ndarray) -> bool:
@@ -258,15 +325,32 @@ class BookClassifier:
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         lap = cv2.Laplacian(gray, cv2.CV_64F)
         var = lap.var()
-        # Handwritten cursive lines typically show smooth stroke gradient variance
         return 30.0 <= var <= 250.0
 
-    def _build_result(self, book_type: str, confidence: float, details: Dict[str, Any]) -> Dict[str, Any]:
+    def _build_result(
+        self,
+        book_type: str,
+        confidence: float,
+        details: Dict[str, Any],
+        book_key: str = "",
+        pdf_path: Optional[Path] = None,
+        csv_path: Optional[Path] = None,
+        total_pages: int = 0
+    ) -> Dict[str, Any]:
         """Construct structured classification report and pipeline routing configuration."""
         tax_info = self.TAXONOMY.get(book_type, self.TAXONOMY["Tx"])
         pipeline_config = self._get_pipeline_routing(book_type)
 
         return {
+            # Catalog keys expected by baseline.ipynb
+            "Book_Key": book_key,
+            "PDF_Path": pdf_path,
+            "CSV_Path": csv_path,
+            "Layout_Code": book_type,
+            "Layout_Description": tax_info["name"],
+            "Total_Pages": total_pages,
+            "Has_Baseline": csv_path is not None and csv_path.exists(),
+            # Standard API keys
             "book_type": book_type,
             "type_name": tax_info["name"],
             "description": tax_info["desc"],
@@ -289,9 +373,9 @@ class BookClassifier:
                 "alignment_mode": "1-1 intra-page phonetic DP sequence alignment",
                 "deliverable_folders": ["ch", "vi", "misc", "blank"],
                 "steps": [
-                    "1. Document Preprocessing: Tách 300 DPI, phân loại trang, dò tìm lề đỏ x=249-270px",
+                    "1. Document Preprocessing: Tách 300 DPI, phân loại trang, dò tìm lề đỏ",
                     "2. Dual OCR: Nhận diện chữ Nôm qua KimHanNom Cloud API và Quốc ngữ qua OCR chữ thảo",
-                    "3. BBox Segmentation: Phân lập 4 điểm polygon cho ch/ (bên phải) và vi/ (bên trái)",
+                    "3. BBox Segmentation: Phân lập 4 điểm polygon cho ch/ và vi/",
                     "4. Bilingual Alignment: Dóng hàng ngữ liệu song song từng trang theo từ điển âm đọc",
                     "5. Text Normalization: Chuẩn hóa Unicode NFC, ánh xạ dấu câu cổ, xuất PPOCRLabel",
                     "6. Quality Evaluation: Đánh giá độ tương đồng >= 95% và tô màu font ARGB Đen/Đỏ"

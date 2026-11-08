@@ -13,14 +13,26 @@ from pathlib import Path
 from typing import List, Dict, Any
 from core.config import COLOR_BLACK, COLOR_RED
 
+
 class CorpusExporter:
+    REQUIRED_COLUMNS = ["img_id", "sentence_id", "SinoNom_Char", "ChuQN_txt"]
+
     @staticmethod
     def export_csv(records: List[Dict[str, Any]], out_csv_path: Path):
         """
         Export records to CSV using utf-8-sig encoding (BOM) to prevent font issues in Excel.
+        Safely handles empty record lists by writing the 4 required header columns.
         """
+        out_csv_path = Path(out_csv_path)
         out_csv_path.parent.mkdir(parents=True, exist_ok=True)
-        df = pd.DataFrame(records)[["img_id", "sentence_id", "SinoNom_Char", "ChuQN_txt"]]
+        if not records:
+            df = pd.DataFrame(columns=CorpusExporter.REQUIRED_COLUMNS)
+        else:
+            df = pd.DataFrame(records)
+            for col in CorpusExporter.REQUIRED_COLUMNS:
+                if col not in df.columns:
+                    df[col] = ""
+            df = df[CorpusExporter.REQUIRED_COLUMNS]
         df.to_csv(str(out_csv_path), index=False, encoding="utf-8-sig")
         print(f"Exported CSV to {out_csv_path} ({len(df)} rows).")
 
@@ -29,13 +41,14 @@ class CorpusExporter:
         """
         Export records to styled XLSX with black/red color-coding based on alignment evaluation.
         """
+        out_xlsx_path = Path(out_xlsx_path)
         out_xlsx_path.parent.mkdir(parents=True, exist_ok=True)
         wb = openpyxl.Workbook()
         ws = wb.active
         ws.title = "Parallel Corpus"
 
         # Headers
-        headers = ["img_id", "sentence_id", "SinoNom_Char", "ChuQN_txt"]
+        headers = CorpusExporter.REQUIRED_COLUMNS
         ws.append(headers)
 
         header_font = Font(name="Arial", size=11, bold=True, color="FF000000")
@@ -62,7 +75,12 @@ class CorpusExporter:
             is_all_matched = eval_info.get("mismatched_chars", 0) == 0
             row_font = font_black if is_all_matched else font_red
 
-            vals = [rec["img_id"], rec["sentence_id"], rec["SinoNom_Char"], rec["ChuQN_txt"]]
+            vals = [
+                rec.get("img_id", ""),
+                rec.get("sentence_id", ""),
+                rec.get("SinoNom_Char", ""),
+                rec.get("ChuQN_txt", "")
+            ]
             for col_idx, val in enumerate(vals, start=1):
                 cell = ws.cell(row=row_idx, column=col_idx, value=val)
                 cell.font = row_font
@@ -86,6 +104,8 @@ class CorpusExporter:
         """
         Package book directory into ZIP file.
         """
+        book_dir = Path(book_dir)
+        zip_dest_path = Path(zip_dest_path)
         zip_dest_path.parent.mkdir(parents=True, exist_ok=True)
         with zipfile.ZipFile(str(zip_dest_path), 'w', zipfile.ZIP_DEFLATED) as zipf:
             for root, _, files in os.walk(str(book_dir)):

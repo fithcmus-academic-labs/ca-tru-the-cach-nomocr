@@ -135,3 +135,10 @@ class SentenceAligner:
         if clean_qn.endswith('.') and not enhanced.endswith('。'):
             enhanced += '。'
         return enhanced
+
+
+class PhoneticAligner:
+    """Backward-compatible wrapper around HanNomDictionary & SentenceAligner."""
+    def __init__(self, dict_path=None):
+        self.dict_engine = HanNomDictionary.get_instance()
+

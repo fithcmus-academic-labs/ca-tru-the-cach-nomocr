@@ -33,6 +33,8 @@ class TextCleaner:
         s = re.sub(r'\s+', '', s)
         return s.strip()
 
+    clean_sinonom = clean_nom
+
     @staticmethod
     def clean_quocngu(text: str) -> str:
         """
@@ -86,6 +88,8 @@ class PPOCRLabelFormatter:
         path_str = f"{folder_name}/{img_name}"
         state = "1" if is_completed else "0"
         return f"{path_str}\t{state}\n"
+
+    format_filestate_line = format_state_line
 
     @classmethod
     def write_ppocr_dataset(cls, folder_path: Path, folder_name: str, labels_by_image: Dict[str, List[Dict[str, Any]]]):

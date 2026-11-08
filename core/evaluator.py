@@ -8,7 +8,7 @@ from core.dictionary import HanNomDictionary
 from core.config import MIN_SIMILARITY_THRESHOLD
 
 class AlignmentEvaluator:
-    def __init__(self):
+    def __init__(self, aligner=None):
         self.dict_engine = HanNomDictionary.get_instance()
 
     def evaluate_record(self, record: Dict[str, Any]) -> Dict[str, Any]:
@@ -59,6 +59,9 @@ class AlignmentEvaluator:
             "total_black_chars": total_black,
             "total_red_chars": total_red,
             "similarity_percentage": dataset_similarity,
+            "overall_similarity": dataset_similarity / 100.0,
             "is_passed": is_passed,
             "row_evaluations": per_row_eval
         }
+
+    evaluate_corpus = evaluate_dataset
