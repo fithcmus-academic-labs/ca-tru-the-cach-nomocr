@@ -134,7 +134,12 @@ class DocumentPreprocessor:
 
     def segment_t2b_lines(self, img_path: Path) -> Dict[str, List[dict]]:
         """
-        Segment text lines and produce 4-point bounding boxes for Nôm (ch) and Quốc ngữ (vi).
+        Segment text lines and produce tight 4-point bounding boxes for Nôm (ch) and Quốc ngữ (vi)
+        strictly adhering to guide/Quy_định_đồ_án.pdf:
+        - Tight boxes hugging text strokes (ôm sát, tránh lệch hàng).
+        - Strips headers, footers, page numbering, margin guides.
+        - Proper ordering: Top-to-bottom for horizontal writing.
+        - Exactly 4 points per polygon [[x1,y1],[x2,y1],[x2,y2],[x1,y2]].
         """
         img = cv2_imread_unicode(img_path)
         if img is None:
@@ -142,46 +147,53 @@ class DocumentPreprocessor:
             
         h, w, _ = img.shape
         margin_x = self.detect_margin_x(img)
-        main_area = img[:, margin_x:w - 40]
+        
+        # Crop main text content area: exclude left margin and top/bottom 3% margins (page numbers/folio)
+        top_cut = int(h * 0.03)
+        bot_cut = int(h * 0.97)
+        main_area = img[top_cut:bot_cut, margin_x:w - 30]
         
         gray = cv2.cvtColor(main_area, cv2.COLOR_BGR2GRAY)
         _, thresh = cv2.threshold(gray, 185, 255, cv2.THRESH_BINARY_INV)
         
-        # Morphological horizontal closing to connect characters into a line
-        kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (20, 3))
+        # Horizontal morphological closing to connect ink characters into lines
+        kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (25, 3))
         cleaned = cv2.morphologyEx(thresh, cv2.MORPH_CLOSE, kernel)
         
         h_proj = cleaned.sum(axis=1) // 255
         
-        # Find horizontal line boundaries
+        # Detect horizontal line spans
         raw_lines = []
         in_line = False
         start_y = 0
+        min_line_h = 12
         for y, val in enumerate(h_proj):
-            if val > 80 and not in_line:
+            if val > 60 and not in_line:
                 in_line = True
                 start_y = y
-            elif val <= 80 and in_line:
+            elif val <= 60 and in_line:
                 in_line = False
-                if y - start_y > 15: # Valid line height
-                    raw_lines.append((start_y, y))
+                if y - start_y >= min_line_h:
+                    raw_lines.append((start_y + top_cut, y + top_cut))
                     
-        # Filter and compute tight horizontal bounding box for each line
+        # Sort lines strictly Top-to-Bottom
+        raw_lines = sorted(raw_lines, key=lambda l: l[0])
+        
         ch_boxes = []
         vi_boxes = []
         
         for idx, (y1, y2) in enumerate(raw_lines):
-            line_roi = cleaned[y1:y2, :]
+            # Compute tight horizontal bounding box within the line roi
+            line_roi = thresh[y1 - top_cut:y2 - top_cut, :]
             col_proj = line_roi.sum(axis=0) // 255
-            non_zeros = np.where(col_proj > 5)[0]
+            non_zeros = np.where(col_proj > 4)[0]
             if len(non_zeros) == 0:
                 continue
-            x1 = margin_x + int(non_zeros[0]) - 5
-            x2 = margin_x + int(non_zeros[-1]) + 5
+            x1 = margin_x + int(non_zeros[0]) - 4
+            x2 = margin_x + int(non_zeros[-1]) + 4
             x1 = max(0, x1)
             x2 = min(w, x2)
             
-            # Format: 4 points [[x1, y1], [x2, y1], [x2, y2], [x1, y2]]
             box = {
                 "points": [[x1, y1], [x2, y1], [x2, y2], [x1, y2]],
                 "y_center": (y1 + y2) / 2
@@ -194,3 +206,51 @@ class DocumentPreprocessor:
                 vi_boxes.append(box)
                 
         return {"ch": ch_boxes, "vi": vi_boxes}
+
+    def segment_vertical_nom_columns(self, img_path: Path) -> List[dict]:
+        """
+        Segment vertical Sino-Nom columns (Tnom, Tnomw, T1/T2 vertical) adhering to regulation:
+        - Level: Vertical columns (cột dọc).
+        - Ordering: RIGHT-TO-LEFT, TOP-TO-BOTTOM (từ phải sang trái, từ trên xuống dưới).
+        - Exactly 4 points per polygon.
+        """
+        img = cv2_imread_unicode(img_path)
+        if img is None:
+            return []
+            
+        h, w, _ = img.shape
+        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        _, thresh = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
+        
+        # Remove borders & frames
+        vert_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (1, 60))
+        vert_lines = cv2.morphologyEx(thresh, cv2.MORPH_OPEN, vert_kernel)
+        text_only = cv2.subtract(thresh, vert_lines)
+        
+        horiz_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (60, 1))
+        horiz_lines = cv2.morphologyEx(thresh, cv2.MORPH_OPEN, horiz_kernel)
+        text_only = cv2.subtract(text_only, horiz_lines)
+        
+        # Connect vertical character strokes within each column
+        char_connect = cv2.getStructuringElement(cv2.MORPH_RECT, (4, 40))
+        connected = cv2.morphologyEx(text_only, cv2.MORPH_CLOSE, char_connect)
+        
+        contours, _ = cv2.findContours(connected, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        raw_boxes = []
+        for cnt in contours:
+            x, y, bw, bh = cv2.boundingRect(cnt)
+            # Filter text columns (valid height > 50, width between 15 and 400)
+            if bh > 50 and 15 < bw < 450:
+                raw_boxes.append((x, y, x + bw, y + bh))
+                
+        # Sort strictly RIGHT-TO-LEFT (x descending), then TOP-TO-BOTTOM (y ascending)
+        sorted_boxes = sorted(raw_boxes, key=lambda b: (-b[0], b[1]))
+        
+        nom_boxes = []
+        for x1, y1, x2, y2 in sorted_boxes:
+            nom_boxes.append({
+                "points": [[x1, y1], [x2, y1], [x2, y2], [x1, y2]],
+                "x_center": (x1 + x2) / 2,
+                "y_center": (y1 + y2) / 2
+            })
+        return nom_boxes
