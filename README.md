@@ -256,10 +256,10 @@ For research auditing, visual exploration, and step-by-step pipeline execution, 
 1. **[run_all_books_pipeline.ipynb](run_all_books_pipeline.ipynb)** (Master Turnkey Single-Click Notebook):
    - Fully automated turnkey execution notebook: click "Restart & Run All" to process all target books and automatically verify all deliverables against the 10 compliance rules.
    - Outputs a unified compliance scorecard table with 10/10 audit verification across all manuscripts.
-   - Built-in hardware runtime benchmark and estimation for local CPU vs GPU vs Cloud API across all 23 books (2,647 pages).
+   - Built-in hardware runtime benchmark and estimation for local CPU vs GPU vs Cloud API across all 24 catalog documents (2,652 pages across 23 scanned PDFs + 1 companion text/PDF).
 
 2. **[universal_book_pipeline_baseline.ipynb](universal_book_pipeline_baseline.ipynb)**:
-   - Universal baseline pipeline capable of processing all 23 manuscript PDFs in `datasets-midterm/pdf/`.
+   - Universal baseline pipeline capable of processing all 24 manuscript documents (23 scanned PDFs + 1 companion translation) in `datasets-midterm/pdf/`.
    - Implements automated layout classification (`BookClassifier`), 300 DPI high-fidelity rendering, 100% page conservation, dual OCR integration with KimHanNom cloud API and defensive parsing, standard 4-point polygon PPOCRLabel generation, dynamic programming bilingual alignment, phonetic evaluation (>= 95% threshold), and 10/10 automated regulatory compliance audit.
 
 3. **[audit_dataset.ipynb](audit_dataset.ipynb)**:
