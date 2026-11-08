@@ -6,6 +6,7 @@ import os
 import sys
 import shutil
 import argparse
+from typing import Optional
 from pathlib import Path
 
 # Ensure repository root is on sys.path
@@ -16,14 +17,45 @@ from core.aligner import SentenceAligner
 from core.cleaner import PPOCRLabelFormatter, TextCleaner
 from core.evaluator import AlignmentEvaluator
 from core.exporter import CorpusExporter
+from core.classifier import BookClassifier
 
 if hasattr(sys.stdout, 'reconfigure'):
     sys.stdout.reconfigure(encoding='utf-8')
 
+def resolve_book_info(book_key: str) -> Optional[dict]:
+    """Dynamically resolve book metadata from preconfigured BOOKS or filesystem."""
+    if book_key in BOOKS:
+        return BOOKS[book_key]
+    for k, b in BOOKS.items():
+        if b["title"].lower() == book_key.lower():
+            return b
+
+    pdf_dir = DATASETS_MIDTERM_DIR / "pdf"
+    csv_dir = DATASETS_MIDTERM_DIR / "csv"
+    target_stem = Path(book_key).stem
+    matched_pdf = None
+    for p in pdf_dir.glob("*.pdf"):
+        if p.stem.lower() == target_stem.lower() or target_stem.lower() in p.stem.lower():
+            matched_pdf = p
+            break
+
+    if matched_pdf:
+        title = matched_pdf.stem
+        csv_file = csv_dir / f"{title}.csv"
+        cls_res = BookClassifier().classify(matched_pdf)
+        return {
+            "title": title,
+            "pdf_filename": matched_pdf.name,
+            "csv_filename": csv_file.name if csv_file.exists() else f"{title}.csv",
+            "xlsx_filename": f"{title}.xlsx",
+            "layout_type": cls_res["book_type"]
+        }
+    return None
+
 def run_book_pipeline(book_key: str):
-    book = BOOKS.get(book_key)
+    book = resolve_book_info(book_key)
     if not book:
-        print(f"Error: Unknown book key {book_key}")
+        print(f"Error: Unknown book key or unresolvable document: {book_key}")
         return False
 
     title = book["title"]
@@ -160,12 +192,19 @@ def run_book_pipeline(book_key: str):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run Parallel Corpus Construction Pipeline")
-    parser.add_argument("--book", type=str, default="AB_160", choices=list(BOOKS.keys()) + ["all"],
-                        help="Book to process (default: AB_160, or 'all')")
+    parser.add_argument("--book", type=str, default="AB_160",
+                        help="Book to process: 'all' (primary 4 books), 'all_catalog' (all 23 books), or specific book key/title/filename")
     args = parser.parse_args()
 
     if args.book == "all":
+        print(f"Running batch processing across primary books: {list(BOOKS.keys())}")
         for k in BOOKS.keys():
             run_book_pipeline(k)
+    elif args.book == "all_catalog":
+        pdf_dir = DATASETS_MIDTERM_DIR / "pdf"
+        catalog_pdfs = sorted(list(pdf_dir.glob("*.pdf")))
+        print(f"Running full catalog batch processing across {len(catalog_pdfs)} books...")
+        for p in catalog_pdfs:
+            run_book_pipeline(p.stem)
     else:
         run_book_pipeline(args.book)

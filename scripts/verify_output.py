@@ -5,6 +5,8 @@ Validates all rules specified in Quy định đồ án.
 import os
 import sys
 import json
+import argparse
+from typing import Optional
 import pandas as pd
 import openpyxl
 from pathlib import Path
@@ -16,13 +18,27 @@ from core.config import BOOKS, OUTPUT_DIR, COLOR_RED, COLOR_BLACK
 if hasattr(sys.stdout, 'reconfigure'):
     sys.stdout.reconfigure(encoding='utf-8')
 
-def verify_book_output(book_key: str) -> bool:
+def resolve_verify_title(book_key: str) -> Optional[str]:
+    """Resolve book title for verification from BOOKS or OUTPUT_DIR."""
     book = BOOKS.get(book_key)
-    if not book:
-        print(f"Error: Unknown book {book_key}")
-        return False
+    if book:
+        return book["title"]
+    for k, b in BOOKS.items():
+        if b["title"].lower() == book_key.lower():
+            return b["title"]
+    if (OUTPUT_DIR / book_key).is_dir():
+        return book_key
+    target_clean = book_key.lower().replace(".pdf", "")
+    for d in OUTPUT_DIR.iterdir():
+        if d.is_dir() and (target_clean == d.name.lower() or target_clean in d.name.lower()):
+            return d.name
+    return None
 
-    title = book["title"]
+def verify_book_output(book_key: str) -> bool:
+    title = resolve_verify_title(book_key)
+    if not title:
+        print(f"Error: Unknown book {book_key} and no matching output directory in {OUTPUT_DIR}")
+        return False
     book_dir = OUTPUT_DIR / title
     print("=" * 80)
     print(f"VERIFYING DELIVERABLES FOR: {title}")
@@ -165,4 +181,17 @@ def verify_book_output(book_key: str) -> bool:
     return all_passed
 
 if __name__ == "__main__":
-    verify_book_output("AB_160")
+    parser = argparse.ArgumentParser(description="Verify Deliverables Compliance")
+    parser.add_argument("--book", type=str, default="AB_160",
+                        help="Book key or title to verify (default: AB_160, or 'all')")
+    args = parser.parse_args()
+
+    if args.book == "all":
+        all_passed = True
+        for k in BOOKS.keys():
+            if not verify_book_output(k):
+                all_passed = False
+        sys.exit(0 if all_passed else 1)
+    else:
+        success = verify_book_output(args.book)
+        sys.exit(0 if success else 1)
