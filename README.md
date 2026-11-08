@@ -253,10 +253,11 @@ Open `http://localhost:5173` in your browser.
 
 For research auditing, visual exploration, and step-by-step pipeline execution, the following Jupyter notebooks are provided:
 
-1. **[run_all_books_pipeline.ipynb](run_all_books_pipeline.ipynb)** (Master Turnkey Single-Click Notebook):
-   - Fully automated turnkey execution notebook: click "Restart & Run All" to process all target books and automatically verify all deliverables against the 10 compliance rules.
-   - Outputs a unified compliance scorecard table with 10/10 audit verification across all manuscripts.
-   - Built-in hardware runtime benchmark and estimation for local CPU vs GPU vs Cloud API across all 24 catalog documents (2,652 pages across 23 scanned PDFs + 1 companion text/PDF).
+1. **[run_all_books.ipynb](run_all_books.ipynb)** / **[run_all_books_pipeline.ipynb](run_all_books_pipeline.ipynb)** (Master Turnkey Single-Click Notebook):
+   - Fully automated turnkey execution notebook: reads all book files directly from `datasets-midterm/pdf/` (23 scanned PDFs + 1 companion translation file `Thụ Dạ Lữ Hoài Ngâm Khúc_Dịch.txt`).
+   - Click "Restart & Run All" to process all manuscripts and immediately generate the complete `output/<Tên sách>/` folder structure ready for submission complying with `guide/Quy_định_đồ_án.pdf`.
+   - Automatically audits all 10 compliance rules and prints a unified scorecard table.
+   - Built-in hardware runtime benchmark and estimation for local CPU vs GPU vs Cloud API across all 24 catalog documents (2,652 pages).
 
 2. **[universal_book_pipeline_baseline.ipynb](universal_book_pipeline_baseline.ipynb)**:
    - Universal baseline pipeline capable of processing all 24 manuscript documents (23 scanned PDFs + 1 companion translation) in `datasets-midterm/pdf/`.
