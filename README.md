@@ -249,45 +249,24 @@ Open `http://localhost:5173` in your browser.
 
 ---
 
-## Interactive Jupyter Notebooks
+## Interactive Jupyter Notebook
 
-For research auditing, visual exploration, and step-by-step pipeline execution, the following Jupyter notebooks are provided:
+The complete end-to-end workflow is consolidated into a single master turnkey notebook:
 
-1. **[run_all_books.ipynb](file:///D:/User/nghonamjiwoo/Natural%20Language%20Processing/ca-tru-the-cach-nomocr/run_all_books.ipynb)** (Master Turnkey Single-Click Notebook):
-   - **Unified all-in-one execution notebook**: reads all book files directly from `datasets-midterm/pdf/` (23 scanned PDFs + 1 companion translation file `Thụ Dạ Lữ Hoài Ngâm Khúc_Dịch.txt`).
-   - Click "Restart & Run All" to process all manuscripts and immediately generate the complete `output/<Tên sách>/` folder structure ready for submission complying with `guide/Quy_định_đồ_án.pdf`.
-   - **Regulatory Compliance Validation Cell**: Automatically audits all 10 compliance rules across all 24 deliverable folders in `output/` (100% page conservation, mandatory `ch/` & `vi/` subdirectories, PPOCRLabel 4-point polygon format, UTF-8 BOM CSV, and ARGB Excel font styling) and prints a unified scorecard table.
-   - **Sample Bounding Box Visualization Cell**: Automatically renders high-resolution sample pages for representative manuscripts with tight green bounding polygons for Chữ Nôm (`ch`), blue polygons for Quốc ngữ (`vi`), and red vertical margin guides (`x = 260`).
-   - **Single Page Custom Inspector**: Built-in function `render_page_with_bboxes()` allowing instant visual inspection of any page of any book by title and image name directly within notebook outputs.
-   - Built-in hardware runtime benchmark and estimation for local CPU vs GPU vs Cloud API across all 24 catalog documents (2,652 pages).
+**[run_all_books.ipynb](file:///D:/User/nghonamjiwoo/Natural%20Language%20Processing/ca-tru-the-cach-nomocr/run_all_books.ipynb)** (Master Turnkey All-in-One Notebook):
+- **Turnkey Batch Pipeline**: Reads all book files directly from `datasets-midterm/pdf/` (23 scanned PDFs + 1 companion translation file `Thụ Dạ Lữ Hoài Ngâm Khúc_Dịch.txt`).
+- **One-Click Execution**: Click "Restart & Run All" to process all manuscripts and immediately generate the complete `output/<Tên sách>/` folder structure ready for submission complying with `guide/Quy_định_đồ_án.pdf`.
+- **Regulatory Compliance Validation Cell**: Automatically audits all 10 compliance rules across all 24 deliverable folders in `output/` (100% page conservation, mandatory `ch/` & `vi/` subdirectories, PPOCRLabel 4-point polygon format, UTF-8 BOM CSV, and ARGB Excel font styling) and prints a unified scorecard table.
+- **Sample Bounding Box Visualization Cell**: Automatically renders high-resolution sample pages for representative manuscripts with tight green bounding polygons for Chữ Nôm (`ch`), blue polygons for Quốc ngữ (`vi`), and red vertical margin guides (`x = 260`).
+- **Single Page Custom Inspector**: Built-in function `render_page_with_bboxes()` allowing instant visual inspection of any page of any book by title and image name directly within notebook outputs.
 
-2. **[universal_book_pipeline_baseline.ipynb](file:///D:/User/nghonamjiwoo/Natural%20Language%20Processing/ca-tru-the-cach-nomocr/universal_book_pipeline_baseline.ipynb)**:
-   - Universal baseline pipeline capable of processing all 24 manuscript documents (23 scanned PDFs + 1 companion translation) in `datasets-midterm/pdf/`.
-   - Implements automated layout classification (`BookClassifier`), 300 DPI high-fidelity rendering, 100% page conservation, dual OCR integration with KimHanNom cloud API and defensive parsing, standard 4-point polygon PPOCRLabel generation, dynamic programming bilingual alignment, phonetic evaluation (>= 95% threshold), and 10/10 automated regulatory compliance audit.
-
-3. **[audit_dataset.ipynb](audit_dataset.ipynb)**:
-   - Completeness audit of deliverable files across all 4 books.
-   - 100% page conservation verification, UTF-8 BOM CSV verification, and ARGB Excel font inspection.
-
-4. **[eda_dataset.ipynb](eda_dataset.ipynb)**:
-   - Exploratory data analysis across the 232-page corpus.
-   - Character frequency distribution, vocabulary overlap analysis, and red vertical margin detection ($x \approx 249\text{ px}$).
-
-5. **[pipeline_architecture.ipynb](pipeline_architecture.ipynb)**:
-   - Comprehensive walk-through of the end-to-end pipeline design.
-   - Automated manuscript layout classification and pipeline routing demonstration across multiple layout families.
-   - Demonstrates live KimHanNom Cloud OCR and transliteration API execution on historical manuscript pages with bounding box visualization.
-
-6. **[pipeline_book_processing_demo.ipynb](pipeline_book_processing_demo.ipynb)**:
-   - End-to-end execution on `Ca Trù Thê Cách, AB 160, Nôm_Y`.
-   - Side-by-side rendering of scanned crops, bounding polygons, bilingual alignment tables, and quality metrics.
-
-To run the notebooks:
+To run the notebook:
 ```bash
 jupyter lab
 # or
 jupyter notebook
 ```
+Then open `run_all_books.ipynb` and select **Kernel -> Restart Kernel and Run All Cells**.
 
 ---
 
