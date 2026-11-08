@@ -251,28 +251,33 @@ Open `http://localhost:5173` in your browser.
 
 ## Interactive Jupyter Notebooks
 
-For research auditing, visual exploration, and step-by-step pipeline execution, four Jupyter notebooks are provided:
+For research auditing, visual exploration, and step-by-step pipeline execution, the following Jupyter notebooks are provided:
 
-1. **[audit_dataset.ipynb](audit_dataset.ipynb)**:
+1. **[run_all_books_pipeline.ipynb](run_all_books_pipeline.ipynb)** (Master Turnkey Single-Click Notebook):
+   - Fully automated turnkey execution notebook: click "Restart & Run All" to process all target books and automatically verify all deliverables against the 10 compliance rules.
+   - Outputs a unified compliance scorecard table with 10/10 audit verification across all manuscripts.
+   - Built-in hardware runtime benchmark and estimation for local CPU vs GPU vs Cloud API across all 23 books (2,647 pages).
+
+2. **[universal_book_pipeline_baseline.ipynb](universal_book_pipeline_baseline.ipynb)**:
+   - Universal baseline pipeline capable of processing all 23 manuscript PDFs in `datasets-midterm/pdf/`.
+   - Implements automated layout classification (`BookClassifier`), 300 DPI high-fidelity rendering, 100% page conservation, dual OCR integration with KimHanNom cloud API and defensive parsing, standard 4-point polygon PPOCRLabel generation, dynamic programming bilingual alignment, phonetic evaluation (>= 95% threshold), and 10/10 automated regulatory compliance audit.
+
+3. **[audit_dataset.ipynb](audit_dataset.ipynb)**:
    - Completeness audit of deliverable files across all 4 books.
    - 100% page conservation verification, UTF-8 BOM CSV verification, and ARGB Excel font inspection.
 
-2. **[eda_dataset.ipynb](eda_dataset.ipynb)**:
+4. **[eda_dataset.ipynb](eda_dataset.ipynb)**:
    - Exploratory data analysis across the 232-page corpus.
    - Character frequency distribution, vocabulary overlap analysis, and red vertical margin detection ($x \approx 249\text{ px}$).
 
-3. **[pipeline_architecture.ipynb](pipeline_architecture.ipynb)**:
+5. **[pipeline_architecture.ipynb](pipeline_architecture.ipynb)**:
    - Comprehensive walk-through of the end-to-end pipeline design.
    - Automated manuscript layout classification and pipeline routing demonstration across multiple layout families.
    - Demonstrates live KimHanNom Cloud OCR and transliteration API execution on historical manuscript pages with bounding box visualization.
 
-4. **[pipeline_book_processing_demo.ipynb](pipeline_book_processing_demo.ipynb)**:
+6. **[pipeline_book_processing_demo.ipynb](pipeline_book_processing_demo.ipynb)**:
    - End-to-end execution on `Ca Trù Thê Cách, AB 160, Nôm_Y`.
    - Side-by-side rendering of scanned crops, bounding polygons, bilingual alignment tables, and quality metrics.
-
-5. **[universal_book_pipeline_baseline.ipynb](universal_book_pipeline_baseline.ipynb)**:
-   - Universal baseline pipeline capable of processing all 23 manuscript PDFs in `datasets-midterm/pdf/`.
-   - Implements automated layout classification (`BookClassifier`), 300 DPI high-fidelity rendering, 100% page conservation, dual OCR integration with KimHanNom cloud API and defensive parsing, standard 4-point polygon PPOCRLabel generation, dynamic programming bilingual alignment, phonetic evaluation ($\ge 95\%$ threshold), and 10/10 automated regulatory compliance audit.
 
 To run the notebooks:
 ```bash
