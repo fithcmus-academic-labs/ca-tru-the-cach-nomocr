@@ -16,6 +16,7 @@ DICTS_DIR = DATA_DIR / "dicts"
 INTERIM_DIR = DATA_DIR / "interim"
 OUTPUT_DIR = BASE_DIR / "output"
 DATASETS_MIDTERM_DIR = BASE_DIR / "datasets-midterm"
+PDF_DIR = DATASETS_MIDTERM_DIR / "pdf"
 
 # Files
 HANNOM_DICT_PKL = DICTS_DIR / "hannom_dict.pkl"
