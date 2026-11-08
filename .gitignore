@@ -39,6 +39,7 @@ guide/
 
 # Pipeline generated outputs
 output/
+visual_proofs/
 kaggle_upload/
 
 # Large binary document formats
